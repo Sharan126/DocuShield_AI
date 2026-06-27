@@ -86,7 +86,8 @@ def run_test():
         
         # Calculate risk score with graph penalty
         graph_penalty, graph_reason = neo4j_service.calculate_graph_risk_for_document(
-            "test_gnn_uuid_2", "SUNITA KUMAR", "45 Residency Road, Bangalore - 560025", phone2, db
+            "test_gnn_uuid_2", "SUNITA KUMAR", "45 Residency Road, Bangalore - 560025", phone2, db,
+            property_id="PROP-RES-45"
         )
         
         doc2 = models.Document(

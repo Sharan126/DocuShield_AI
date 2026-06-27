@@ -1,3 +1,86 @@
+"""
+DocuShield AI — Document-Type-Aware Forensic Risk Scoring Engine.
+
+Computes fraud risk scores based on document forensics, AI/ML classification,
+graph syndicate analysis, GNN predictions, and document-specific field validation.
+
+The scoring engine adapts its field requirements based on the detected document type,
+eliminating false penalties when documents legitimately lack certain fields.
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PER-DOCUMENT-TYPE REQUIRED FIELDS
+# Each document type defines which extracted fields must be present.
+# Missing fields trigger a penalty only if they are expected for that type.
+# ─────────────────────────────────────────────────────────────────────────────
+
+REQUIRED_FIELDS_BY_TYPE = {
+    "BANK_STATEMENT": {
+        "fields": ["applicant_name", "account_number"],
+        "label": "Bank Statement",
+    },
+    "SALARY_SLIP": {
+        "fields": ["applicant_name", "income"],
+        "label": "Salary Slip",
+    },
+    "AADHAAR": {
+        "fields": ["applicant_name", "aadhaar_number"],
+        "label": "Aadhaar Card",
+    },
+    "PAN": {
+        "fields": ["applicant_name", "pan_number"],
+        "label": "PAN Card",
+    },
+    "PROPERTY_DOCUMENT": {
+        "fields": ["applicant_name", "property_id"],
+        "label": "Property Document",
+    },
+    "LOAN_APPLICATION": {
+        "fields": ["applicant_name", "income", "property_id"],
+        "label": "Loan Application",
+    },
+    "ITR": {
+        "fields": ["applicant_name", "income"],
+        "label": "Income Tax Return",
+    },
+    "UNKNOWN": {
+        "fields": ["applicant_name"],
+        "label": "Unknown Document",
+    },
+}
+
+
+def _check_extracted_field(extracted_fields: dict, field_name: str) -> bool:
+    """Check if an extracted field has a meaningful non-empty value."""
+    if not extracted_fields:
+        return False
+
+    # Field name aliases — OCR uses "monthly_income", pipeline uses "income"
+    FIELD_ALIASES = {
+        "income": ["income", "monthly_income"],
+        "monthly_income": ["monthly_income", "income"],
+    }
+
+    field_names_to_check = FIELD_ALIASES.get(field_name, [field_name])
+
+    for fname in field_names_to_check:
+        val = extracted_fields.get(fname)
+        if val is None:
+            continue
+
+        # Handle dict values (LayoutLM format with value/confidence)
+        if isinstance(val, dict):
+            val = val.get("value")
+
+        # Check for non-empty
+        if isinstance(val, str) and val.strip():
+            return True
+        if isinstance(val, (int, float)) and val > 0:
+            return True
+
+    return False
+
+
 def calculate_risk_score(
     meta_report: dict,
     ocr_report: dict,
@@ -13,32 +96,35 @@ def calculate_risk_score(
     gnn_risk_level: str = "Low",
     ela_score: float = 0.0,
     compress_report: dict = None,
-    quality_report: dict = None
+    quality_report: dict = None,
+    document_type: str = "UNKNOWN",
+    extracted_fields: dict = None
 ) -> dict:
     """
-    Computes a fraud risk score (0-100) and risk level classification:
-    - AI/ML ResNet18 Classifier penalty (up to +35 based on confidence)
-    - Metadata anomaly = +30
-    - OCR extraction failure = +20
-    - Missing required fields = +25
-    - Validation mismatch = +25
-<<<<<<< HEAD
-    - Graph syndicate fraud ring penalty (up to +30)
-=======
-    - ELA discrepancy = up to +25
-    - Compression artifacts = +15
-    - Image quality warning = +10
->>>>>>> 930bc4133369cb20a5ebd19be27a311f92dc5b81
+    Computes a fraud risk score (0-100) and risk level classification.
+
+    Penalties:
+    - AI/ML classifier tampered prediction: up to +35
+    - Metadata anomaly: +30
+    - OCR extraction failure: +20
+    - Missing required fields (document-type-aware): +25
+    - Validation mismatch: +25
+    - Graph syndicate penalty: up to +30
+    - Signature forgery: +30
+    - GNN syndicate risk: up to +30
+    - ELA discrepancy: up to +25
+    - Compression artifacts: +15
+    - Image quality warning: +10
     """
     score = 0
     issues = []
 
-    # 0. AI/ML ResNet18 prediction penalty
+    # 0. AI/ML classifier prediction penalty
     if ml_prediction and ml_prediction.get("prediction") == "tampered":
         confidence = ml_prediction.get("confidence", 0.5)
         penalty = int(35 * confidence)
         score += penalty
-        issues.append(f"AI/ML ResNet18 Classifier flagged the document as tampered (confidence: {confidence * 100:.1f}%).")
+        issues.append(f"AI/ML classifier flagged the document as tampered (confidence: {confidence * 100:.1f}%).")
 
     # 1. Metadata anomaly = +30
     is_meta_anomaly = (
@@ -63,14 +149,23 @@ def calculate_risk_score(
             issues.append("OCR text extraction failure (no text blocks detected).")
             ocr_failed = True
 
-    # 3. Missing required fields = +25
+    # 3. Missing required fields = +25 (DOCUMENT-TYPE-AWARE)
     if not ocr_failed:
-        text_str = " ".join([b.get("text", "") for b in ocr_report.get("text_blocks", [])]).lower()
-        required_fields = ["applicant name", "property address", "monthly income", "loan amount"]
-        missing_any = any(field not in text_str for field in required_fields)
-        if missing_any:
+        type_config = REQUIRED_FIELDS_BY_TYPE.get(document_type, REQUIRED_FIELDS_BY_TYPE["UNKNOWN"])
+        required = type_config["fields"]
+        type_label = type_config["label"]
+
+        if extracted_fields:
+            # Check extracted field values directly
+            missing = [f for f in required if not _check_extracted_field(extracted_fields, f)]
+            if missing:
+                score += 25
+                missing_str = ", ".join(missing)
+                issues.append(f"Missing required fields for {type_label}: {missing_str}.")
+        else:
+            # Legacy fallback: no extracted_fields provided
             score += 25
-            issues.append("Missing required fields (e.g. Applicant Name, Income, or Property details).")
+            issues.append(f"Missing required fields (extraction data unavailable for {type_label}).")
     else:
         score += 25
         issues.append("Missing required fields due to OCR failure.")

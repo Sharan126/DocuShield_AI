@@ -164,22 +164,51 @@ def upload_documents(
             logger.error(f"LayoutLMv3 intelligence extraction failed: {layoutlm_err}")
 
         # 5d. Run Graph Syndicate analysis
-        ocr_fields = ocr.extract_fields_from_text(ocr_report.get("extracted_text", ""))
+        # Determine document type from LayoutLM or OCR
+        detected_doc_type = "UNKNOWN"
+        if layoutlm_intel and layoutlm_intel.get("document_type", {}).get("value"):
+            detected_doc_type = layoutlm_intel["document_type"]["value"]
+
+        # Extract fields using document-type-aware OCR
+        ocr_fields = ocr.extract_fields_from_text(ocr_report.get("extracted_text", ""), doc_type=detected_doc_type)
+
+        # Build intel_fields by preferring LayoutLM values over OCR fallback
+        def _get_intel_value(field_name, ocr_fallback_key=None):
+            """Get field value preferring LayoutLM over OCR, with confidence gating."""
+            if layoutlm_intel and layoutlm_intel.get(field_name):
+                lm_val = layoutlm_intel[field_name]
+                if isinstance(lm_val, dict):
+                    val = lm_val.get("value", "")
+                    conf = lm_val.get("confidence", 0.0)
+                    if val and conf >= 0.50:
+                        return val
+            # Fallback to OCR
+            fallback_key = ocr_fallback_key or field_name
+            return ocr_fields.get(fallback_key, "")
+
         intel_fields = {
-            "applicant_name": (layoutlm_intel.get("applicant_name", {}).get("value") if (layoutlm_intel and layoutlm_intel.get("applicant_name")) else ocr_fields["applicant_name"]),
-            "address": (layoutlm_intel.get("address", {}).get("value") if (layoutlm_intel and layoutlm_intel.get("address")) else ocr_fields["address"]),
-            "property_id": (layoutlm_intel.get("property_id", {}).get("value") if (layoutlm_intel and layoutlm_intel.get("property_id")) else ocr_fields["property_id"]),
-            "income": (layoutlm_intel.get("income", {}).get("value") if (layoutlm_intel and layoutlm_intel.get("income")) else ocr_fields["monthly_income"]),
-            "document_type": (layoutlm_intel.get("document_type", {}).get("value") if (layoutlm_intel and layoutlm_intel.get("document_type")) else "UNKNOWN")
+            "applicant_name": _get_intel_value("applicant_name"),
+            "address": _get_intel_value("address"),
+            "property_id": _get_intel_value("property_id"),
+            "income": _get_intel_value("income", "monthly_income"),
+            "document_type": detected_doc_type,
+            "account_number": _get_intel_value("account_number"),
+            "aadhaar_number": _get_intel_value("aadhaar_number"),
+            "pan_number": _get_intel_value("pan_number"),
         }
         
         # Ensure values exist or fallback
-        app_name = intel_fields["applicant_name"] or ocr_fields["applicant_name"]
-        addr_val = intel_fields["address"] or ocr_fields["address"]
+        app_name = intel_fields["applicant_name"] or ocr_fields.get("applicant_name", "")
+        addr_val = intel_fields["address"] or ocr_fields.get("address", "")
         
         phone_numbers = neo4j_service.extract_phone_numbers(ocr_report.get("extracted_text", ""))
         graph_risk_penalty, graph_reason = neo4j_service.calculate_graph_risk_for_document(
-            doc_uuid, app_name, addr_val, phone_numbers, db
+            doc_id=doc_uuid,
+            applicant_name=app_name,
+            address=addr_val,
+            phone_numbers=phone_numbers,
+            db=db,
+            property_id=intel_fields["property_id"]
         )
 
         # 5e. Run Signature Verification Analysis
@@ -205,7 +234,7 @@ def upload_documents(
         except Exception as gnn_err:
             logger.error(f"GNN prediction failed in pipeline: {gnn_err}")
 
-        # 6. Calculate Forensic Risk Score incorporating quality, ELA, compression and local features
+        # 6. Calculate Forensic Risk Score with document-type-aware field validation
         risk_report = risk_score.calculate_risk_score(
             meta_report=meta_report,
             ocr_report=ocr_report,
@@ -219,7 +248,9 @@ def upload_documents(
             gnn_risk_level=gnn_report["risk_level"],
             ela_score=ela_score,
             compress_report=compress_report,
-            quality_report=quality_report
+            quality_report=quality_report,
+            document_type=detected_doc_type,
+            extracted_fields=intel_fields
         )
 
         # Combined weighted score: 0.6 * ML + 0.4 * Forensics
@@ -270,7 +301,7 @@ def upload_documents(
             
             # New processing pipeline columns
             document_id=doc_uuid,
-            upload_time=datetime.datetime.utcnow(),
+            upload_time=datetime.datetime.now(datetime.timezone.utc),
             analysis_status="processed",
             risk_score=float(fraud_score)
         )
@@ -339,6 +370,14 @@ def get_document_details(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this document")
         
     # De-serialize JSON properties
+    # Ensure timestamps are timezone-aware UTC for consistent frontend rendering
+    def _ensure_utc(dt):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        return dt
+
     return {
         "id": doc.id,
         "document_id": doc.document_id,
@@ -353,8 +392,8 @@ def get_document_details(
         "font_status": doc.font_status,
         "signature_status": doc.signature_status,
         "compression_status": doc.compression_status,
-        "uploaded_at": doc.uploaded_at,
-        "upload_time": doc.upload_time,
+        "uploaded_at": _ensure_utc(doc.uploaded_at),
+        "upload_time": _ensure_utc(doc.upload_time),
         "analysis_status": doc.analysis_status,
         
         # Decoded strings

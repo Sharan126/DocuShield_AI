@@ -8,6 +8,9 @@ from app import models
 
 logger = logging.getLogger("docushield.neo4j")
 
+# Minimum confidence threshold for creating graph nodes from extracted fields
+GRAPH_CONFIDENCE_THRESHOLD = 0.50
+
 # Connection parameters
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
@@ -92,7 +95,11 @@ def extract_co_applicant(text: str) -> str:
 def add_document_nodes_and_relationships(doc_record: models.Document, fields: dict, phone_numbers: list):
     """
     Called on document upload to sync document data to Neo4j if active.
+    Only creates graph nodes from extracted fields that pass confidence
+    and blacklist validation.
     """
+    from app.services.ocr import _is_blacklisted_name
+
     connector = Neo4jConnector.get_instance()
     if not connector.connected:
         return
@@ -105,7 +112,9 @@ def add_document_nodes_and_relationships(doc_record: models.Document, fields: di
     doc_type = fields.get("document_type", doc_record.file_type).upper()
     risk_score = doc_record.fraud_score or doc_record.risk_score or 0.0
 
-    if not applicant_name:
+    # Filter out blacklisted / low-quality applicant names
+    if not applicant_name or _is_blacklisted_name(applicant_name):
+        logger.warning(f"Skipping graph sync: applicant name '{applicant_name}' is empty or blacklisted.")
         return
 
     # Base Cypher parameters
@@ -169,17 +178,37 @@ def calculate_graph_risk_for_document(
     address: str,
     phone_numbers: list,
     db: Session,
-    income: float = 0.0
+    income: float = 0.0,
+    property_id: str = None
 ) -> tuple:
     """
     Checks if the newly uploaded applicant, property, or phone details overlap
     with other applicants' applications in the database, yielding graph risk penalties.
     """
-    if not applicant_name:
+    # Filter out blacklisted names to prevent table headers from entering graph risk
+    from app.services.ocr import _is_blacklisted_name
+    if not applicant_name or _is_blacklisted_name(applicant_name):
         return 0, ""
 
     penalty = 0
     reasons = []
+
+    # Extract the uploaded document's property ID once before iterating through historical records
+    target_property_id = (property_id or "").strip().upper()
+    if not target_property_id and doc_id:
+        target_doc = db.query(models.Document).filter(models.Document.document_id == doc_id).first()
+        if target_doc:
+            intel = {}
+            if target_doc.layoutlm_intelligence:
+                try:
+                    intel = json.loads(target_doc.layoutlm_intelligence)
+                except Exception:
+                    intel = {}
+            target_property_id = (intel.get("property_id", {}).get("value") or "").strip().upper()
+            if not target_property_id:
+                from app.services import ocr
+                fields = ocr.extract_fields_from_text(target_doc.extracted_text or "")
+                target_property_id = fields["property_id"]
 
     # Query all active documents, protecting against SQL NULL comparisons
     query = db.query(models.Document)
@@ -194,6 +223,10 @@ def calculate_graph_risk_for_document(
     discrepancy_amount_old = 0.0
 
     for doc in existing_docs:
+        # Do not compare a historical document against itself
+        if doc_id and doc.document_id == doc_id:
+            continue
+
         # Deserialize layout intelligence or fall back to regex ocr fields
         intel = {}
         if doc.layoutlm_intelligence:
@@ -224,7 +257,7 @@ def calculate_graph_risk_for_document(
             if address and exist_addr and (address.lower() in exist_addr.lower() or exist_addr.lower() in address.lower()):
                 shared_property = True
                 reasons.append(f"Shares residential/property address collateral ('{address}') with another applicant '{exist_name}'")
-            elif exist_prop_id and exist_prop_id == property_id_clean(doc.extracted_text):
+            if target_property_id and exist_prop_id and exist_prop_id == target_property_id:
                 shared_property = True
                 reasons.append(f"Shares Property ID '{exist_prop_id}' with applicant '{exist_name}'")
 
