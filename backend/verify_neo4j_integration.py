@@ -94,7 +94,8 @@ def run_test():
         
         # Evaluate graph syndicate risk penalty
         graph_penalty, graph_reason = neo4j_service.calculate_graph_risk_for_document(
-            "test_neo4j_uuid_2", "SUNITA KUMAR", "45 Residency Road, Bangalore - 560025", phone2, db
+            "test_neo4j_uuid_2", "SUNITA KUMAR", "45 Residency Road, Bangalore - 560025", phone2, db,
+            property_id="PROP-RES-45"
         )
         
         print(f"-> Checked syndicate database overlap. Penalty: +{graph_penalty}")

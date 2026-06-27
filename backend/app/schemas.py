@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 class UserBase(BaseModel):
     username: str
@@ -53,6 +53,14 @@ class DocumentResponse(BaseModel):
     uploaded_by_id: int
     gnn_fraud_probability: Optional[float] = 0.0
     gnn_risk_level: Optional[str] = "Low"
+
+    @field_validator("uploaded_at", mode="before")
+    @classmethod
+    def ensure_utc_timezone(cls, v):
+        """Ensure uploaded_at carries UTC timezone info for correct frontend rendering."""
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
     class Config:
         from_attributes = True

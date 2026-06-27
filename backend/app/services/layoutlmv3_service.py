@@ -12,6 +12,16 @@ except ImportError:
 
 logger = logging.getLogger("docushield.layoutlmv3")
 
+# Import shared utilities from ocr module
+from app.services.ocr import (
+    NAME_BLACKLIST, _is_blacklisted_name, _looks_like_person_name,
+    detect_document_type, _extract_income, _extract_property_id,
+)
+
+# Minimum confidence threshold for accepting extracted field values
+MIN_FIELD_CONFIDENCE = 0.55
+
+
 class LayoutLMv3ModelWrapper:
     _instance = None
 
@@ -61,10 +71,293 @@ class LayoutLMv3ModelWrapper:
             self.model = None
             self.loaded = False
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SPATIAL EXTRACTION HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _blocks_on_same_line(box_a, box_b, overlap_threshold=0.5):
+    """Check if two bounding boxes are on the same horizontal line."""
+    height_a = box_a[3] - box_a[1]
+    if height_a <= 0:
+        return False
+    overlap_y = min(box_a[3], box_b[3]) - max(box_a[1], box_b[1])
+    return (overlap_y / height_a) > overlap_threshold
+
+
+def _block_is_right_of(box_a, box_b, max_gap=200):
+    """Check if box_b is to the right of box_a within max_gap."""
+    return box_b[0] > box_a[0] and (box_b[0] - box_a[2]) < max_gap
+
+
+def _block_is_below(box_a, box_b, max_gap=80):
+    """Check if box_b is directly below box_a."""
+    width_a = box_a[2] - box_a[0]
+    if width_a <= 0:
+        return False
+    overlap_x = min(box_a[2], box_b[2]) - max(box_a[0], box_b[0])
+    return (overlap_x / width_a) > 0.3 and box_b[1] > box_a[1] and (box_b[1] - box_a[3]) < max_gap
+
+
+def _find_value_near_label(sorted_blocks, keywords, is_numeric=False):
+    """
+    Find a field value near a label keyword using spatial relationships.
+    Searches: same block after colon, same line to the right, block below.
+    """
+    for idx, block in enumerate(sorted_blocks):
+        text = block["text"]
+        text_lower = text.lower()
+        
+        matched = False
+        for kw in keywords:
+            if kw in text_lower:
+                matched = True
+                break
+                
+        if not matched:
+            continue
+            
+        # 1. Check if value is in same block after a colon or space
+        parts = text.split(":")
+        if len(parts) > 1 and parts[-1].strip():
+            val = parts[-1].strip()
+            if is_numeric:
+                nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
+                if nums:
+                    return nums[-1].replace(",", ""), block.get("original_confidence", 0.90)
+            else:
+                if not _is_blacklisted_name(val):
+                    return val, block.get("original_confidence", 0.90)
+        
+        box_curr = block["box"]
+        
+        # 2. Check blocks on the same horizontal line to the right
+        for other_block in sorted_blocks:
+            if other_block is block:
+                continue
+            box_other = other_block["box"]
+            if _blocks_on_same_line(box_curr, box_other) and _block_is_right_of(box_curr, box_other):
+                val = other_block["text"].strip()
+                if is_numeric:
+                    nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
+                    if nums:
+                        return nums[-1].replace(",", ""), other_block.get("original_confidence", 0.88)
+                else:
+                    if not _is_blacklisted_name(val):
+                        return val, other_block.get("original_confidence", 0.88)
+                        
+        # 3. Check block directly below
+        for other_block in sorted_blocks:
+            if other_block is block:
+                continue
+            box_other = other_block["box"]
+            if _block_is_below(box_curr, box_other):
+                val = other_block["text"].strip()
+                if is_numeric:
+                    nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
+                    if nums:
+                        return nums[-1].replace(",", ""), other_block.get("original_confidence", 0.83)
+                else:
+                    if not _is_blacklisted_name(val):
+                        return val, other_block.get("original_confidence", 0.83)
+                        
+    return "", 0.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# APPLICANT NAME EXTRACTION — MULTI-STRATEGY
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_name_from_blocks(sorted_blocks, doc_type, img_height=1000):
+    """
+    Multi-strategy applicant name extraction using layout-aware analysis.
+
+    Strategy A: Explicit label matching (highest confidence)
+    Strategy B: Document-type-specific spatial heuristics
+    Strategy C: General spatial heuristic — name-shaped text in top 40%
+    """
+    candidates = []
+
+    # ── Strategy A: Explicit label matching ──
+    name_labels = [
+        "applicant name", "customer name", "account holder",
+        "employee name", "employee", "card holder name",
+        "name of the applicant", "name of the customer",
+        "name of account holder", "borrower name",
+    ]
+    val, conf = _find_value_near_label(sorted_blocks, name_labels)
+    if val and _looks_like_person_name(val):
+        candidates.append({"name": val.strip().upper(), "confidence": conf, "strategy": "label"})
+
+    # ── Strategy B: Document-type-specific spatial heuristics ──
+    if doc_type == "BANK_STATEMENT":
+        # In bank statements, the name appears near account info, above an address
+        # Look for a name-shaped block near "Opening Balance" or "Account Number"
+        anchor_keywords = ["opening balance", "account number", "account no", "statement date"]
+        for block in sorted_blocks:
+            text_lower = block["text"].lower()
+            if any(kw in text_lower for kw in anchor_keywords):
+                anchor_box = block["box"]
+                # Search nearby blocks for a name
+                for other in sorted_blocks:
+                    if other is block:
+                        continue
+                    other_box = other["box"]
+                    candidate_text = other["text"].strip()
+                    # Must be on a nearby line (within 150 units vertically)
+                    y_distance = abs(other_box[1] - anchor_box[1])
+                    if y_distance < 150 and _looks_like_person_name(candidate_text):
+                        conf_val = other.get("original_confidence", 0.80)
+                        # Prefer names with 2+ words
+                        if len(candidate_text.split()) >= 2:
+                            conf_val += 0.05
+                        candidates.append({
+                            "name": candidate_text.upper(),
+                            "confidence": min(0.95, conf_val),
+                            "strategy": "bank_spatial"
+                        })
+                break  # Only use first anchor found
+
+    elif doc_type in ("AADHAAR", "PAN"):
+        # For identity cards, name appears after header lines
+        header_done = False
+        for block in sorted_blocks:
+            text = block["text"].strip()
+            text_lower = text.lower()
+            if any(kw in text_lower for kw in ["government", "india", "aadhaar", "uidai",
+                                                 "income tax", "permanent account"]):
+                header_done = True
+                continue
+            if header_done and _looks_like_person_name(text) and len(text.split()) >= 2:
+                candidates.append({
+                    "name": text.upper(),
+                    "confidence": block.get("original_confidence", 0.85),
+                    "strategy": "identity_card"
+                })
+                break
+
+    # ── Strategy C: General spatial heuristic ──
+    # Look for name-shaped text in the top 40% of the document
+    top_threshold = img_height * 0.4
+    for block in sorted_blocks:
+        box = block["box"]
+        if box[1] > top_threshold:
+            continue
+        text = block["text"].strip()
+        if _looks_like_person_name(text) and len(text.split()) >= 2:
+            # Must not already be captured
+            existing_names = {c["name"] for c in candidates}
+            if text.upper() not in existing_names:
+                # Lower confidence for general heuristic
+                candidates.append({
+                    "name": text.upper(),
+                    "confidence": block.get("original_confidence", 0.65) * 0.8,
+                    "strategy": "spatial_top40"
+                })
+
+    # ── Select best candidate ──
+    if not candidates:
+        return "", 0.0
+
+    # Sort by confidence (descending), prefer label matches
+    strategy_boost = {"label": 0.10, "bank_spatial": 0.05, "identity_card": 0.05, "spatial_top40": 0.0}
+    for c in candidates:
+        c["adjusted_conf"] = c["confidence"] + strategy_boost.get(c["strategy"], 0.0)
+
+    candidates.sort(key=lambda c: c["adjusted_conf"], reverse=True)
+    best = candidates[0]
+
+    logger.info(f"Name extraction selected '{best['name']}' via strategy='{best['strategy']}' "
+                f"conf={best['confidence']:.2f} (candidates={len(candidates)})")
+
+    return best["name"], best["confidence"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADDRESS EXTRACTION — LAYOUT-AWARE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_address_from_blocks(sorted_blocks, doc_type):
+    """Extract address using spatial relationships."""
+    # Strategy 1: Find explicit address label
+    addr_labels = ["property address", "residential address", "permanent address",
+                   "correspondence address", "address"]
+    val, conf = _find_value_near_label(sorted_blocks, addr_labels)
+    if val and len(val) > 5:
+        return re.sub(r'^[\s,:\-\.]+', '', val).strip(), conf
+
+    # Strategy 2: For bank statements, find address below the applicant name
+    if doc_type == "BANK_STATEMENT":
+        for i, block in enumerate(sorted_blocks):
+            text = block["text"].strip()
+            if _looks_like_person_name(text) and len(text.split()) >= 2:
+                # Collect consecutive address-like lines below
+                addr_parts = []
+                for j in range(i + 1, min(i + 4, len(sorted_blocks))):
+                    candidate = sorted_blocks[j]["text"].strip()
+                    cand_lower = candidate.lower()
+                    # Stop if we hit a non-address keyword
+                    if any(kw in cand_lower for kw in [
+                        "opening balance", "closing balance", "account",
+                        "statement", "branch", "transaction", "total",
+                        "credit", "debit", "page", "number of"
+                    ]):
+                        break
+                    if _is_blacklisted_name(candidate):
+                        break
+                    # Address lines have numbers + letters
+                    if re.search(r'\d', candidate) and len(candidate) > 5:
+                        addr_parts.append(candidate)
+                    elif any(sig in cand_lower for sig in [
+                        "street", "road", "st,", "ave", "nagar", "colony", "sector",
+                        "district", "city", "state", "pin", "zip", "ste", "suite"
+                    ]):
+                        addr_parts.append(candidate)
+                if addr_parts:
+                    return ", ".join(addr_parts), 0.82
+    return "", 0.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INCOME EXTRACTION — LAYOUT-AWARE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_income_from_blocks(sorted_blocks, doc_type):
+    """Extract income using spatial layout and document type."""
+    income_keywords_by_type = {
+        "SALARY_SLIP": ["net pay", "net salary", "monthly net income", "monthly income",
+                        "gross salary", "gross pay", "take home", "total earnings"],
+        "BANK_STATEMENT": ["closing balance", "total credit amount", "total credit",
+                           "average monthly balance", "opening balance"],
+        "LOAN_APPLICATION": ["monthly income", "annual income", "income",
+                             "loan amount", "requested amount"],
+        "ITR": ["total income", "gross total income", "net taxable income"],
+    }
+
+    keywords = income_keywords_by_type.get(doc_type, [
+        "monthly income", "net income", "gross salary", "closing balance",
+        "total credit", "income", "salary", "net pay",
+    ])
+
+    val, conf = _find_value_near_label(sorted_blocks, keywords, is_numeric=True)
+    if val:
+        try:
+            return float(val.replace(",", "")), conf
+        except ValueError:
+            pass
+    return 0.0, 0.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN EXTRACTION FUNCTION
+# ─────────────────────────────────────────────────────────────────────────────
+
 def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
     """
     Extracts key fields from document using LayoutLMv3 processing, bounding box scaling,
-    and fallback sequence-labelling/layout-aware rule-based information extraction.
+    and layout-aware multi-strategy information extraction.
+
+    Fully dynamic — adapts extraction strategy based on detected document type.
     """
     # 1. Determine image dimensions
     width, height = 800, 1000
@@ -101,7 +394,7 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
         scaled_blocks.append({
             "text": block.get("text", ""),
             "box": [x0, y0, x1, y1],
-            "original_confidence": block.get("confidence", 99.0)
+            "original_confidence": block.get("confidence", 99.0) / 100.0
         })
 
     # 3. Try to run real LayoutLMv3 Processor and Model encoding
@@ -141,167 +434,87 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
         except Exception as inference_err:
             logger.warning(f"Real LayoutLMv3 forward pass failed or bypassed: {inference_err}.")
 
-    # 4. Extract fields using layout-aware search
+    # 4. Detect document type from text content
+    full_text = "\n".join([b["text"] for b in scaled_blocks])
+    doc_type, doc_type_conf = detect_document_type(full_text)
+
     # Sort the scaled blocks by y0 (top to bottom) first, and then x0 (left to right)
     sorted_blocks = sorted(scaled_blocks, key=lambda b: (b["box"][1], b["box"][0]))
-    
+
+    # 5. Initialize extraction results
     extracted = {
         "applicant_name": {"value": "", "confidence": 0.0},
         "address": {"value": "", "confidence": 0.0},
         "income": {"value": 0.0, "confidence": 0.0},
         "property_id": {"value": "", "confidence": 0.0},
-        "document_type": {"value": "UNKNOWN", "confidence": 0.0}
+        "document_type": {"value": doc_type, "confidence": doc_type_conf},
+        "account_number": {"value": "", "confidence": 0.0},
+        "aadhaar_number": {"value": "", "confidence": 0.0},
+        "pan_number": {"value": "", "confidence": 0.0},
     }
-    
-    # Analyze text for document type
-    full_text = "\n".join([b["text"] for b in sorted_blocks])
-    full_text_lower = full_text.lower()
-    
-    doc_type = "UNKNOWN"
-    doc_type_conf = 0.50
-    
-    if "salary slip" in full_text_lower or "pay slip" in full_text_lower:
-        doc_type = "SALARY_SLIP"
-        doc_type_conf = 0.98
-    elif "bank statement" in full_text_lower:
-        doc_type = "BANK_STATEMENT"
-        doc_type_conf = 0.98
-    elif "income tax return" in full_text_lower or "itr" in full_text_lower or "tax assessment" in full_text_lower:
-        doc_type = "ITR"
-        doc_type_conf = 0.97
-    elif "deed" in full_text_lower or "sale agreement" in full_text_lower or "property registration" in full_text_lower:
-        doc_type = "DEED"
-        doc_type_conf = 0.95
-    elif "property tax" in full_text_lower:
-        doc_type = "PROPERTY_TAX"
-        doc_type_conf = 0.96
-    elif "aadhaar" in full_text_lower or "pan card" in full_text_lower or "identity" in full_text_lower:
-        doc_type = "IDENTITY_CARD"
-        doc_type_conf = 0.94
-        
-    extracted["document_type"] = {"value": doc_type, "confidence": doc_type_conf}
-    
-    # Helper to find values near labels (either in the same line or line below)
-    def find_field_value(keywords, is_numeric=False):
-        for idx, block in enumerate(sorted_blocks):
-            text = block["text"]
-            text_lower = text.lower()
-            
-            match = None
-            for kw in keywords:
-                # Word boundary or colon matching
-                m = re.search(r"\b" + re.escape(kw) + r"\b|:" + re.escape(kw), text_lower)
-                if m:
-                    match = m
-                    break
-                    
-            if match:
-                # 1. Check if value is in same block after a colon or space
-                parts = text.split(":")
-                if len(parts) > 1 and parts[1].strip():
-                    val = parts[1].strip()
-                    if is_numeric:
-                        nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
-                        if nums:
-                            return nums[-1].replace(",", ""), 0.92
-                    else:
-                        return val, 0.92
-                
-                # 2. Check next block if it is on the same horizontal line (y0 overlaps)
-                box_curr = block["box"]
-                for other_block in sorted_blocks:
-                    if other_block == block:
-                        continue
-                    box_other = other_block["box"]
-                    overlap_y = min(box_curr[3], box_other[3]) - max(box_curr[1], box_other[1])
-                    height_curr = box_curr[3] - box_curr[1]
-                    if height_curr > 0 and (overlap_y / height_curr) > 0.5:
-                        if box_other[0] > box_curr[0] and (box_other[0] - box_curr[2]) < 200:
-                            val = other_block["text"].strip()
-                            if is_numeric:
-                                nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
-                                if nums:
-                                    return nums[-1].replace(",", ""), 0.90
-                            else:
-                                return val, 0.90
-                                
-                # 3. Check block directly below (vertical spacing)
-                for other_block in sorted_blocks:
-                    if other_block == block:
-                        continue
-                    box_other = other_block["box"]
-                    overlap_x = min(box_curr[2], box_other[2]) - max(box_curr[0], box_other[0])
-                    width_curr = box_curr[2] - box_curr[0]
-                    if width_curr > 0 and (overlap_x / width_curr) > 0.5:
-                        if box_other[1] > box_curr[1] and (box_other[1] - box_curr[3]) < 80:
-                            val = other_block["text"].strip()
-                            if is_numeric:
-                                nums = re.findall(r"[\d,]+(?:\.\d+)?", val)
-                                if nums:
-                                    return nums[-1].replace(",", ""), 0.85
-                            else:
-                                return val, 0.85
-                                
-        return "", 0.0
 
-    # Extract Applicant Name
-    name_val, name_conf = find_field_value(["applicant name", "employee", "account holder", "name"])
-    if name_val:
-        name_val = re.sub(r'[\'":]', '', name_val).strip().upper()
+    # 6. Extract applicant name (multi-strategy)
+    name_val, name_conf = _extract_name_from_blocks(sorted_blocks, doc_type, img_height=1000)
+    if name_val and name_conf >= MIN_FIELD_CONFIDENCE:
         extracted["applicant_name"] = {"value": name_val, "confidence": name_conf}
     else:
-        name_match = re.search(r"(?:account holder|applicant name|employee)\s*:\s*([^\n\r]+)", full_text_lower)
-        if name_match:
-            name_val = re.sub(r'[\'"]', '', name_match.group(1)).strip().upper()
-            extracted["applicant_name"] = {"value": name_val, "confidence": 0.80}
+        # Fallback to OCR regex extraction
+        from app.services.ocr import _extract_name_labeled, _extract_name_bank_statement
+        name_val = _extract_name_labeled(full_text)
+        if not name_val and doc_type == "BANK_STATEMENT":
+            name_val = _extract_name_bank_statement(full_text)
+        if name_val and not _is_blacklisted_name(name_val):
+            extracted["applicant_name"] = {"value": name_val.upper(), "confidence": 0.70}
 
-    # Extract Address
-    addr_val, addr_conf = find_field_value(["property address", "address", "residential address"])
-    if addr_val:
-        addr_val = re.sub(r'^[\s,:\-\.]+', '', addr_val).strip()
+    # 7. Extract address (layout-aware)
+    addr_val, addr_conf = _extract_address_from_blocks(sorted_blocks, doc_type)
+    if addr_val and addr_conf >= MIN_FIELD_CONFIDENCE:
         extracted["address"] = {"value": addr_val, "confidence": addr_conf}
     else:
-        addr_match = re.search(r"(?:property address|address)\s*:\s*([^\n\r]+)", full_text_lower)
-        if addr_match:
-            addr_val = addr_match.group(1).strip()
-            extracted["address"] = {"value": addr_val, "confidence": 0.80}
+        # Fallback to OCR regex
+        from app.services.ocr import _extract_address
+        addr_val = _extract_address(full_text, doc_type)
+        if addr_val:
+            extracted["address"] = {"value": addr_val, "confidence": 0.70}
 
-    # Extract Income
-    inc_val_regex = None
-    keyword_match = re.search(r"(?:monthly income|monthly net income|closing balance|amount disbursed)", full_text_lower)
-    if keyword_match:
-        after_text = full_text_lower[keyword_match.end():]
-        numbers = re.findall(r"(?:inr|usd|[\$\u20b9])?\s*([\d,]+(?:\.\d{2})?)", after_text)
-        if numbers:
-            inc_val_regex = numbers[-1].replace(",", "")
-
-    inc_val_layout, inc_conf_layout = find_field_value(["monthly net income", "monthly income", "closing balance", "amount disbursed", "net income", "monthly salary", "net salary", "gross salary"], is_numeric=True)
-
-    if inc_val_regex:
-        try:
-            val_float = float(inc_val_regex)
-            conf = 0.92 if inc_val_layout and abs(float(inc_val_layout) - val_float) < 1.0 else 0.88
-            extracted["income"] = {"value": val_float, "confidence": conf}
-        except ValueError:
-            pass
-    elif inc_val_layout:
-        try:
-            extracted["income"] = {"value": float(inc_val_layout), "confidence": inc_conf_layout}
-        except ValueError:
-            pass
-
-    # Extract Property ID
-    prop_val, prop_conf = find_field_value(["property id", "property code", "asset id"])
-    if prop_val:
-        prop_val = re.sub(r'[\'":]', '', prop_val).strip().upper()
-        extracted["property_id"] = {"value": prop_val, "confidence": prop_conf}
+    # 8. Extract income (layout-aware, document-type-specific)
+    inc_val, inc_conf = _extract_income_from_blocks(sorted_blocks, doc_type)
+    if inc_val > 0 and inc_conf >= MIN_FIELD_CONFIDENCE:
+        extracted["income"] = {"value": inc_val, "confidence": inc_conf}
     else:
-        prop_match = re.search(r"property id\s*:\s*([\w\-]+)", full_text_lower)
-        if prop_match:
-            prop_val = prop_match.group(1).strip().upper()
-            extracted["property_id"] = {"value": prop_val, "confidence": 0.80}
+        # Fallback to OCR regex
+        inc_val = _extract_income(full_text, doc_type)
+        if inc_val > 0:
+            extracted["income"] = {"value": inc_val, "confidence": 0.70}
 
-    # Normalize fields (make sure empty results have confidence 0.0)
+    # 9. Extract property ID (only for applicable document types)
+    prop_val = _extract_property_id(full_text, doc_type)
+    if prop_val:
+        extracted["property_id"] = {"value": prop_val, "confidence": 0.85}
+
+    # 10. Extract type-specific identifiers
+    if doc_type in ("BANK_STATEMENT", "LOAN_APPLICATION", "UNKNOWN"):
+        acct_labels = ["account number", "account no", "a/c no"]
+        acct_val, acct_conf = _find_value_near_label(sorted_blocks, acct_labels)
+        if acct_val:
+            # Clean to keep only digits and hyphens
+            acct_clean = re.sub(r'[^\d\-]', '', acct_val)
+            if acct_clean and len(acct_clean) >= 4:
+                extracted["account_number"] = {"value": acct_clean, "confidence": acct_conf}
+
+    if doc_type in ("AADHAAR", "UNKNOWN"):
+        from app.services.ocr import _extract_aadhaar_number
+        aadhaar = _extract_aadhaar_number(full_text)
+        if aadhaar:
+            extracted["aadhaar_number"] = {"value": aadhaar, "confidence": 0.90}
+
+    if doc_type in ("PAN", "ITR", "UNKNOWN"):
+        from app.services.ocr import _extract_pan_number
+        pan = _extract_pan_number(full_text)
+        if pan:
+            extracted["pan_number"] = {"value": pan, "confidence": 0.90}
+
+    # 11. Normalize: ensure empty results have confidence 0.0
     for key in extracted:
         if not extracted[key]["value"]:
             if key == "income":
@@ -312,12 +525,10 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
                 extracted[key]["value"] = ""
             extracted[key]["confidence"] = 0.0
 
-    # Boost confidence scores if LayoutLMv3 inference ran successfully
+    # 12. Boost confidence scores if LayoutLMv3 inference ran successfully
     if run_real_inference:
         for key in extracted:
             if extracted[key]["confidence"] > 0.0:
                 extracted[key]["confidence"] = round(min(0.99, extracted[key]["confidence"] + 0.05), 2)
-            else:
-                extracted[key]["confidence"] = 0.50
 
     return extracted

@@ -14,7 +14,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     otp_secret = Column(String, nullable=True)
     otp_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     documents = relationship("Document", back_populates="uploader")
 
@@ -39,12 +39,12 @@ class Document(Base):
     compression_status = Column(String, default="Passed")
     
     # Storage and details
-    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+    uploaded_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     uploaded_by_id = Column(Integer, ForeignKey("users.id"))
     
     # New processing pipeline columns
     document_id = Column(String, unique=True, index=True, nullable=True)
-    upload_time = Column(DateTime, default=datetime.datetime.utcnow, nullable=True)
+    upload_time = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), nullable=True)
     analysis_status = Column(String, default="pending", nullable=True)
     risk_score = Column(Float, default=0.0, nullable=True)
     
@@ -65,7 +65,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     username = Column(String, nullable=False)
     event = Column(String, nullable=False)
     status = Column(String, nullable=False)  # Success, Failure, Warn
@@ -83,4 +83,4 @@ class CrossValidation(Base):
     financial_match = Column(Boolean, default=True)
     
     discrepancy_report = Column(Text, nullable=True)  # JSON-serialized mismatch descriptions
-    checked_at = Column(DateTime, default=datetime.datetime.utcnow)
+    checked_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
