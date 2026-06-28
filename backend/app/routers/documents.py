@@ -35,9 +35,13 @@ def upload_documents(
         # 1. Read file and compute hash
         file_bytes = upload_file.file.read()
         file_hash = hashlib.md5(file_bytes).hexdigest()
+        db_file_hash = f"{file_hash}_{current_user.id}"
         
-        # Check if hash already analyzed to avoid redundancy
-        existing_doc = db.query(models.Document).filter(models.Document.file_hash == file_hash).first()
+        # Check if hash already analyzed to avoid redundancy for this user
+        existing_doc = db.query(models.Document).filter(
+            models.Document.file_hash.in_([db_file_hash, file_hash]),
+            models.Document.uploaded_by_id == current_user.id
+        ).first()
         if existing_doc:
             # Audit log warning duplicate upload
             db.add(models.AuditLog(
@@ -70,6 +74,7 @@ def upload_documents(
                     layoutlm_intel = None
 
             results.append({
+                "id": existing_doc.id,
                 "document_id": existing_doc.document_id or str(uuid.uuid4()),
                 "status": existing_doc.analysis_status or "processed",
                 "ocr_text": existing_doc.extracted_text or "",
@@ -280,7 +285,7 @@ def upload_documents(
             file_name=upload_file.filename,
             file_type=upload_file.filename.split('.')[-1].upper(),
             file_path=saved_path,
-            file_hash=file_hash,
+            file_hash=db_file_hash,
             fraud_score=round(float(fraud_score), 1),
             confidence_score=round(float(confidence), 1),
             risk_level=risk_report["risk_level"],
@@ -329,6 +334,7 @@ def upload_documents(
         }))
         
         results.append({
+            "id": doc_record.id,
             "document_id": doc_uuid,
             "status": "processed",
             "ocr_text": doc_record.extracted_text,
@@ -358,11 +364,15 @@ def list_documents(
 
 @router.get("/{doc_id}")
 def get_document_details(
-    doc_id: int,
+    doc_id: str,
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
-    doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if doc_id.isdigit():
+        doc = db.query(models.Document).filter(models.Document.id == int(doc_id)).first()
+    else:
+        doc = db.query(models.Document).filter(models.Document.document_id == doc_id).first()
+        
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
@@ -410,13 +420,20 @@ def get_document_details(
 
 @router.post("/cross-validate", response_model=schemas.CrossValidationResponse)
 def cross_validate_documents(
-    doc_id_1: int = Form(...),
-    doc_id_2: int = Form(...),
+    doc_id_1: str = Form(...),
+    doc_id_2: str = Form(...),
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
-    doc1 = db.query(models.Document).filter(models.Document.id == doc_id_1).first()
-    doc2 = db.query(models.Document).filter(models.Document.id == doc_id_2).first()
+    if doc_id_1.isdigit():
+        doc1 = db.query(models.Document).filter(models.Document.id == int(doc_id_1)).first()
+    else:
+        doc1 = db.query(models.Document).filter(models.Document.document_id == doc_id_1).first()
+
+    if doc_id_2.isdigit():
+        doc2 = db.query(models.Document).filter(models.Document.id == int(doc_id_2)).first()
+    else:
+        doc2 = db.query(models.Document).filter(models.Document.document_id == doc_id_2).first()
     
     if not doc1 or not doc2:
         raise HTTPException(status_code=404, detail="One or both documents do not exist")
@@ -474,13 +491,17 @@ def cross_validate_documents(
 # Simulated report generation routes
 @router.get("/{doc_id}/download-pdf")
 def download_pdf_report(
-    doc_id: int,
+    doc_id: str,
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
     # To keep this zero-dependency and fast, we send a nice text/pdf mock content response
     # Or a dummy report file to verify PDF downloads works.
-    doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if doc_id.isdigit():
+        doc = db.query(models.Document).filter(models.Document.id == int(doc_id)).first()
+    else:
+        doc = db.query(models.Document).filter(models.Document.document_id == doc_id).first()
+        
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
@@ -514,11 +535,15 @@ DocuShield AI Platform Underwriting Security
 
 @router.get("/{doc_id}/download-excel")
 def download_excel_report(
-    doc_id: int,
+    doc_id: str,
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
-    doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if doc_id.isdigit():
+        doc = db.query(models.Document).filter(models.Document.id == int(doc_id)).first()
+    else:
+        doc = db.query(models.Document).filter(models.Document.document_id == doc_id).first()
+        
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         

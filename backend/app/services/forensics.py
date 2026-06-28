@@ -140,6 +140,9 @@ def inspect_metadata(file_path: str, original_filename: str = None) -> dict:
             msg = f"Document edited using software: {exif_software}"
             if msg not in warnings:
                 warnings.append(msg)
+        elif any(s in soft_lower for s in ["scanjet", "hp smart", "hp", "canon", "epson", "brother", "fujitsu", "ricoh", "xerox", "panasonic", "paperport", "scanner", "scan"]):
+            # Trusted scanner device
+            status = "Passed"
         elif status == "Passed":
             status = "Alert"
             msg = f"Document metadata lists editing software: {exif_software}"

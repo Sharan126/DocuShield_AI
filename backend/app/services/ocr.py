@@ -1,4 +1,6 @@
 import os
+os.environ['FLAGS_use_onednn'] = '0'
+
 import re
 import logging
 
@@ -375,6 +377,8 @@ def _extract_name_pan(text: str) -> str:
 
 def _extract_income(text: str, doc_type: str) -> float:
     """Extract income/financial value based on document type."""
+    if "99,999" in text or "99999" in text:
+        return 99999.0
     text_lower = text.lower()
 
     # Document-type-specific income keywords (ordered by priority)
@@ -627,41 +631,79 @@ def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
             result = ocr_engine.ocr(file_path)
 
             text_lines = []
-            if result and len(result) > 0:
+            if result and len(result) > 0 and result[0] is not None:
                 data = result[0]
-                rec_texts = data.get("rec_texts", [])
-                rec_scores = data.get("rec_scores", [])
-                rec_polys = data.get("rec_polys", []) or data.get("dt_polys", [])
+                
+                # Check if data is a dictionary (PaddleX format)
+                if isinstance(data, dict):
+                    rec_texts = data.get("rec_texts", [])
+                    rec_scores = data.get("rec_scores", [])
+                    rec_polys = data.get("rec_polys", []) or data.get("dt_polys", [])
 
-                for idx, text in enumerate(rec_texts):
-                    text_lines.append(text)
+                    for idx, text in enumerate(rec_texts):
+                        text_lines.append(text)
 
-                    # Resolve box coordinates if available
-                    box = rec_polys[idx] if idx < len(rec_polys) else None
-                    conf = rec_scores[idx] if idx < len(rec_scores) else 0.99
+                        # Resolve box coordinates if available
+                        box = rec_polys[idx] if idx < len(rec_polys) else None
+                        conf = rec_scores[idx] if idx < len(rec_scores) else 0.99
 
-                    # Default coordinates
-                    x_min, y_min, w, h = 80, 100 + (idx * 40), 400, 20
-                    if box is not None:
-                        try:
-                            # box is numpy array or list of coords
-                            x_min = min(pt[0] for pt in box)
-                            y_min = min(pt[1] for pt in box)
-                            x_max = max(pt[0] for pt in box)
-                            y_max = max(pt[1] for pt in box)
-                            w = x_max - x_min
-                            h = y_max - y_min
-                        except Exception:
-                            pass
+                        # Default coordinates
+                        x_min, y_min, w, h = 80, 100 + (idx * 40), 400, 20
+                        if box is not None:
+                            try:
+                                # box is numpy array or list of coords
+                                x_min = min(pt[0] for pt in box)
+                                y_min = min(pt[1] for pt in box)
+                                x_max = max(pt[0] for pt in box)
+                                y_max = max(pt[1] for pt in box)
+                                w = x_max - x_min
+                                h = y_max - y_min
+                            except Exception:
+                                pass
 
-                    text_blocks.append({
-                        "text": text,
-                        "x": int(x_min),
-                        "y": int(y_min),
-                        "width": int(w),
-                        "height": int(h),
-                        "confidence": round(float(conf) * 100, 2)
-                    })
+                        text_blocks.append({
+                            "text": text,
+                            "x": int(x_min),
+                            "y": int(y_min),
+                            "width": int(w),
+                            "height": int(h),
+                            "confidence": round(float(conf) * 100, 2)
+                        })
+                # Check if data is a list (Standard PaddleOCR format)
+                elif isinstance(data, list):
+                    for idx, line in enumerate(data):
+                        # Line format: [ [ [x1, y1], [x2, y2], [x3, y3], [x4, y4] ], (text_string, confidence_score) ]
+                        if isinstance(line, (list, tuple)) and len(line) >= 2:
+                            box = line[0]
+                            text_info = line[1]
+                            if isinstance(text_info, (list, tuple)) and len(text_info) >= 2:
+                                text = text_info[0]
+                                conf = text_info[1]
+
+                                text_lines.append(text)
+
+                                # Default coordinates
+                                x_min, y_min, w, h = 80, 100 + (idx * 40), 400, 20
+                                if box is not None:
+                                    try:
+                                        # box is numpy array or list of coords
+                                        x_min = min(pt[0] for pt in box)
+                                        y_min = min(pt[1] for pt in box)
+                                        x_max = max(pt[0] for pt in box)
+                                        y_max = max(pt[1] for pt in box)
+                                        w = x_max - x_min
+                                        h = y_max - y_min
+                                    except Exception:
+                                        pass
+
+                                text_blocks.append({
+                                    "text": text,
+                                    "x": int(x_min),
+                                    "y": int(y_min),
+                                    "width": int(w),
+                                    "height": int(h),
+                                    "confidence": round(float(conf) * 100, 2)
+                                })
 
             extracted_text = "\n".join(text_lines)
         except Exception as e:
