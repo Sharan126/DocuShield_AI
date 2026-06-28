@@ -109,9 +109,24 @@ export default function DocumentUpload() {
       setSuccess(true);
       setSelectedFiles([]);
       
-      // Auto-redirect to dashboard home after brief sleep
+      let targetId = "";
+      try {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const doc = data[0];
+          targetId = doc.id || doc.document_id || "";
+        }
+      } catch (e) {
+        console.warn("Error parsing upload response JSON", e);
+      }
+
+      // Auto-redirect to scanner page or dashboard home after brief sleep
       setTimeout(() => {
-        router.push("/dashboard");
+        if (targetId) {
+          router.push(`/dashboard/scanner?id=${targetId}`);
+        } else {
+          router.push("/dashboard");
+        }
       }, 1500);
 
     } catch (err: any) {
@@ -142,7 +157,7 @@ export default function DocumentUpload() {
         {success && (
           <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-xl flex items-center space-x-3">
             <CheckCircle className="w-5 h-5 shrink-0" />
-            <span>Loan document tamper scanning finished! Re-routing to ledger.</span>
+            <span>Loan document tamper scanning finished! Opening scanner...</span>
           </div>
         )}
 

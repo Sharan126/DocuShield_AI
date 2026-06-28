@@ -81,6 +81,7 @@ class LayoutLMv3Intelligence(BaseModel):
     document_type: LayoutLMv3Field
 
 class DocumentAnalysisResponse(BaseModel):
+    id: Optional[int] = None
     document_id: str
     status: str
     ocr_text: str
