@@ -10,14 +10,32 @@ export default function LoginPage() {
   const router = useRouter();
   const authStore = useAuthStore();
 
+  const [mode, setMode] = useState<"login" | "forgot" | "reset">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const modeParam = params.get("mode");
+      const userParam = params.get("username");
+      if (modeParam === "reset") {
+        setMode("reset");
+      }
+      if (userParam) {
+        setUsername(userParam);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setMessage("");
     setLoading(true);
 
     try {
@@ -55,7 +73,77 @@ export default function LoginPage() {
         role: payload.role,
       });
 
-      router.push("/dashboard");
+      if (payload.role === "Auditor") {
+        router.push("/dashboard/audits");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/auth/forgot-password?username=${encodeURIComponent(username)}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Verification request failed.");
+      }
+
+      const data = await response.json();
+      setMessage(data.message || "Simulated verification link logged in system Audit Logs.");
+      
+      // Auto transition to reset password view after a short delay
+      setTimeout(() => {
+        setMode("reset");
+        setMessage("");
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:8000/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, new_password: newPassword }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Password reset failed.");
+      }
+
+      const data = await response.json();
+      setMessage(data.message || "Password updated successfully!");
+      
+      // Back to login after a short delay
+      setTimeout(() => {
+        setMode("login");
+        setMessage("");
+        setPassword("");
+        setNewPassword("");
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -89,62 +177,187 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-bold text-slate-200">System Authentication</h3>
-              <p className="text-xs text-slate-500">Sign in to unlock forensic analysis sessions</p>
+          {message && (
+            <div className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-lg text-center">
+              {message}
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Username</label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  required
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your system username"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
-                />
+          {mode === "login" && (
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-slate-200">System Authentication</h3>
+                <p className="text-xs text-slate-500">Sign in to unlock forensic analysis sessions</p>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Security Password</label>
-              <div className="relative">
-                <Key className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
-                />
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Username</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    required
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your system username"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" className="accent-accent" />
-                <span>Remember Session</span>
-              </label>
-              <Link href="#" className="hover:text-accent">Reset Password?</Link>
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Security Password</label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
+                  />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center"
-            >
-              {loading ? "Authenticating credentials..." : "Access Secure Environment"}
-            </button>
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="checkbox" className="accent-accent" />
+                  <span>Remember Session</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setMessage("");
+                    setMode("forgot");
+                  }}
+                  className="hover:text-accent cursor-pointer outline-none"
+                >
+                  Reset Password?
+                </button>
+              </div>
 
-            <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-800/60">
-              Need underwriter clearance? <Link href="/register" className="text-accent hover:underline">Register Account</Link>
-            </div>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center"
+              >
+                {loading ? "Authenticating credentials..." : "Access Secure Environment"}
+              </button>
+
+              <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-800/60">
+                Need underwriter clearance? <Link href="/register" className="text-accent hover:underline">Register Account</Link>
+              </div>
+            </form>
+          )}
+
+          {mode === "forgot" && (
+            <form onSubmit={handleRequestReset} className="space-y-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-slate-200">Reset Password Link</h3>
+                <p className="text-xs text-slate-500">Request a verification link for your system account</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Username</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    required
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your system username"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center"
+              >
+                {loading ? "Requesting Link..." : "Request Reset Link"}
+              </button>
+
+              <div className="text-center text-xs text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setMessage("");
+                    setMode("login");
+                  }}
+                  className="hover:text-accent underline outline-none"
+                >
+                  Back to Authentication
+                </button>
+              </div>
+            </form>
+          )}
+
+          {mode === "reset" && (
+            <form onSubmit={handleResetPassword} className="space-y-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-slate-200">Configure Credentials</h3>
+                <p className="text-xs text-slate-500">Update your security credentials for secure environment access</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Username</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    required
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Confirm your system username"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">New Security Password</label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                  <input
+                    required
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter strong new password"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-3 text-sm text-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center"
+              >
+                {loading ? "Configuring Credentials..." : "Update Security Credentials"}
+              </button>
+
+              <div className="text-center text-xs text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setMessage("");
+                    setMode("login");
+                  }}
+                  className="hover:text-accent underline outline-none"
+                >
+                  Back to Authentication
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

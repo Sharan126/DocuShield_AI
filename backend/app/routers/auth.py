@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas, security
+from app.config import settings
+from app.services.email_service import send_reset_password_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -120,13 +122,32 @@ def forgot_password(username: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
+    reset_link = f"{settings.FRONTEND_URL}/login?mode=reset&username={user.username}"
+    send_reset_password_email(user.username, user.email, reset_link)
+
     db.add(models.AuditLog(
         username=username,
-        event="Password reset requested. Simulating verification link.",
+        event="Password reset requested. Verification email dispatched.",
         status="Success"
     ))
     db.commit()
-    return {"message": "Verification link sent to user email."}
+    return {"message": f"Verification link sent to user email ({user.email})."}
+
+@router.post("/reset-password")
+def reset_password(reset_data: schemas.PasswordReset, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == reset_data.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.hashed_password = security.get_password_hash(reset_data.new_password)
+    
+    db.add(models.AuditLog(
+        username=reset_data.username,
+        event="Password reset successfully completed",
+        status="Success"
+    ))
+    db.commit()
+    return {"message": "Password reset completed successfully."}
 
 # Admin endpoints
 @router.get("/users")

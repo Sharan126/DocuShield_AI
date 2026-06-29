@@ -64,6 +64,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoggedIn, router]);
 
+  // RBAC Page Protection & Redirects
+  useEffect(() => {
+    if (isLoggedIn && user && pathname) {
+      if (pathname === "/dashboard" && user.role === "Auditor") {
+        router.push("/dashboard/audits");
+        return;
+      }
+      
+      const unauthorizedForAuditor = [
+        "/dashboard/upload",
+        "/dashboard/scanner",
+        "/dashboard/heatmap",
+        "/dashboard/validation",
+        "/dashboard/analytics",
+        "/dashboard/graph"
+      ];
+      if (user.role === "Auditor" && unauthorizedForAuditor.includes(pathname)) {
+        router.push("/dashboard/audits");
+        return;
+      }
+      
+      if (user.role === "Underwriter" && pathname === "/dashboard/audits") {
+        router.push("/dashboard");
+        return;
+      }
+      
+      if (user.role !== "Admin" && pathname === "/dashboard/admin") {
+        router.push("/dashboard");
+        return;
+      }
+    }
+  }, [isLoggedIn, user, pathname, router]);
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -73,30 +106,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   // Sidebar Menu mapping
-  const menuItems = [
-    { name: { EN: "Dashboard", HI: "डैशबोर्ड", KN: "ಡ್ಯಾಶ್ಬೋರ್ಡ್" }, path: "/dashboard", icon: LayoutDashboard },
-    { name: { EN: "Upload Documents", HI: "दस्तावेज़ अपलोड", KN: "ದಾಖಲೆ ಅಪ್ಲೋಡ್" }, path: "/dashboard/upload", icon: UploadCloud },
-    { name: { EN: "Fraud Scanner", HI: "धोखाधड़ी स्कैनर", KN: "ವಂಚನೆ ಸ್ಕ್ಯಾನರ್" }, path: "/dashboard/scanner", icon: ScanLine },
-    { name: { EN: "Heatmap Viewer", HI: "हीटमैप व्यूअर", KN: "ಹೀಟ್ಮ್ಯಾಪ್ ವೀಕ್ಷಕ" }, path: "/dashboard/heatmap", icon: Layers },
-    { name: { EN: "Cross Validation", HI: "क्रॉस सत्यापन", KN: "ಕ್ರಾಸ್ ಸಿಂಧುತ್ವ" }, path: "/dashboard/validation", icon: FileCheck },
-    { name: { EN: "Risk Analytics", HI: "जोखिम विश्लेषण", KN: "ಅಪಾಯ ವಿಶ್ಲೇಷಣೆ" }, path: "/dashboard/analytics", icon: PieChart },
-    { name: { EN: "Graph Intelligence", HI: "ग्राफ इंटेलिजेंस", KN: "ಗ್ರಾಫ್ ಇಂಟೆಲಿಜೆನ್ಸ್" }, path: "/dashboard/graph", icon: Network },
-    { name: { EN: "Audit Logs", HI: "ऑडिट लॉग", KN: "ಲೆಕ್ಕ ಪರಿಶೋಧನೆ" }, path: "/dashboard/audits", icon: History },
+  const allMenuItems = [
+    { name: { EN: "Dashboard", HI: "डैशबोर्ड", KN: "ಡ್ಯಾಶ್ಬೋರ್ಡ್" }, path: "/dashboard", icon: LayoutDashboard, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Upload Documents", HI: "दस्तावेज़ अपलोड", KN: "ದಾಖಲೆ ಅಪ್ಲೋಡ್" }, path: "/dashboard/upload", icon: UploadCloud, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Fraud Scanner", HI: "धोखाधड़ी स्कैनर", KN: "ವಂಚನೆ ಸ್ಕ್ಯಾನರ್" }, path: "/dashboard/scanner", icon: ScanLine, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Heatmap Viewer", HI: "हीटमैप व्यूअर", KN: "ಹೀಟ್ಮ್ಯಾಪ್ ವೀಕ್ಷಕ" }, path: "/dashboard/heatmap", icon: Layers, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Cross Validation", HI: "क्रॉस सत्यापन", KN: "ಕ್ರಾಸ್ ಸಿಂಧುತ್ವ" }, path: "/dashboard/validation", icon: FileCheck, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Risk Analytics", HI: "जोखिम विश्लेषण", KN: "ಅಪಾಯ ವಿಶ್ಲೇषಣೆ" }, path: "/dashboard/analytics", icon: PieChart, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Graph Intelligence", HI: "ग्राफ इंटेलिजेंस", KN: "ಗ್ರಾಫ್ ಇಂಟೆಲಿಜೆನ್ಸ್" }, path: "/dashboard/graph", icon: Network, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Audit Logs", HI: "ऑडिट लॉग", KN: "ಲೆಕ್ಕ ಪರಿಶೋಧನೆ" }, path: "/dashboard/audits", icon: History, roles: ["Admin", "Auditor"] },
   ];
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(user?.role || ""));
 
   // If Admin role, append admin panel
   if (user?.role === "Admin") {
     menuItems.push({
       name: { EN: "Admin Settings", HI: "एडमिन सेटिंग्स", KN: "ನಿರ್ವಾಹಕ ಸೆಟ್ಟಿಂಗ್ಸ್" },
       path: "/dashboard/admin",
-      icon: UserSquare2
+      icon: UserSquare2,
+      roles: ["Admin"]
     });
   }
 
   menuItems.push({
     name: { EN: "Settings", HI: "सेटिंग्स", KN: "ಸೆಟ್ಟಿಂಗ್ಸ್" },
     path: "/dashboard/settings",
-    icon: Settings
+    icon: Settings,
+    roles: ["Admin", "Underwriter", "Auditor"]
   });
 
   const activeLang = language || "EN";

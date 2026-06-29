@@ -121,3 +121,7 @@ class CrossValidationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PasswordReset(BaseModel):
+    username: str
+    new_password: str

@@ -41,8 +41,12 @@ def run_db_migrations():
     ]
     with engine.begin() as conn:
         for col, col_type in columns:
+            actual_type = col_type
+            if not is_sqlite and col_type == "DATETIME":
+                actual_type = "TIMESTAMP"
             try:
-                conn.execute(text(f"ALTER TABLE documents ADD COLUMN {col} {col_type}"))
+                conn.execute(text(f"ALTER TABLE documents ADD COLUMN {col} {actual_type}"))
             except Exception as e:
                 # Column probably already exists or table doesn't exist
                 pass
+

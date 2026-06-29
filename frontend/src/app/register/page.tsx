@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("Underwriter"); // Admin, Underwriter, Auditor
+  const [role, setRole] = useState(""); // Admin, Underwriter, Auditor
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -125,10 +125,12 @@ export default function RegisterPage() {
               <div className="relative">
                 <Shield className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
                 <select
+                  required
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-2.5 text-sm text-white transition-all appearance-none cursor-pointer"
                 >
+                  <option value="" disabled>Select Assigned Role</option>
                   <option value="Underwriter">Underwriter (Process Scans)</option>
                   <option value="Auditor">Auditor (Check Compliance)</option>
                   <option value="Admin">Admin (Control Settings)</option>

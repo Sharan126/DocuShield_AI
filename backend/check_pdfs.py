@@ -1,7 +1,8 @@
+import os
 import sqlite3
 import json
 
-db_path = r"c:\Users\FQ1089AU\DocuShield_AI-1\backend\docushield.db"
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docushield.db")
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 

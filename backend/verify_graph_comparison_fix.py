@@ -5,22 +5,50 @@ import sqlite3
 from sqlalchemy.orm import Session
 
 # Add backend directory to path
-backend_dir = r'c:\Users\FQ1089AU\DocuShield_AI-1\backend'
+backend_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(backend_dir)
 
-from app.database import SessionLocal
+# Import PyTorch first to prevent DLL loading WinError 127
+try:
+    import torch
+except ImportError:
+    pass
+
+from app.database import SessionLocal, Base, engine, run_db_migrations
 from app import models
 from app.services import neo4j_service
 
 def run_verification():
-    db = SessionLocal()
     print("=" * 70)
     print("   DOCUSHIELD AI - GRAPH PROPERTY BUG FIX VERIFICATION")
     print("=" * 70)
 
+    # Run database migrations to verify columns are created
+    print("[Test 0] Running DB migrations for required columns...")
+    Base.metadata.create_all(bind=engine)
+    run_db_migrations()
+    print("-> Schema verified successfully.")
+
+    db = SessionLocal()
     try:
         # Clear any existing test records from previous test runs
         db.query(models.Document).filter(models.Document.document_id.like("test_fix_%")).delete(synchronize_session=False)
+        db.commit()
+
+        # Seed Ramesh Kumar test document with PROP-RES-45 to match against
+        ramesh_doc = models.Document(
+            file_name="Ramesh_SalarySlip.png",
+            file_type="PNG",
+            file_path="media/uploads/Ramesh_SalarySlip.png",
+            file_hash="test_fix_hash_ramesh",
+            document_id="test_fix_ramesh_uuid",
+            extracted_text="CANARA BANK SALARY SLIP\nEmployee: Ramesh Kumar\nMonthly Net Income: INR 1,45,000",
+            layoutlm_intelligence=json.dumps({
+                "applicant_name": {"value": "RAMESH KUMAR", "confidence": 0.95},
+                "property_id": {"value": "PROP-RES-45", "confidence": 0.92}
+            })
+        )
+        db.add(ramesh_doc)
         db.commit()
 
         # Step 1. Test 1: Upload a document with a different property ID (e.g., PROP-DIFFERENT-99)

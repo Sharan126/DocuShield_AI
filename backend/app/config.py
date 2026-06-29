@@ -16,8 +16,18 @@ class Settings:
     ROLE_UNDERWRITER: str = "Underwriter"
     ROLE_AUDITOR: str = "Auditor"
 
+    # Frontend and Email Configuration
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "no-reply@docushield.ai")
+    EMAIL_DIR: str = os.getenv("EMAIL_DIR", "./media/emails")
+
 settings = Settings()
 
 # Ensure folders exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.ELA_DIR, exist_ok=True)
+os.makedirs(settings.EMAIL_DIR, exist_ok=True)
