@@ -16,6 +16,7 @@ try:
 except ImportError:
     pass
 
+from sqlalchemy.orm import Session
 from app import models
 
 logger = logging.getLogger("docushield.gnn")
