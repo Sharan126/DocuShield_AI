@@ -2,50 +2,61 @@ import os
 import re
 import json
 import logging
-# Optional/lazy GNN imports
-torch_available = False
-nn_Module = object
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    from torch_geometric.data import Data
-    from torch_geometric.nn import GCNConv
-    torch_available = True
-    nn_Module = nn.Module
-except ImportError:
-    pass
-
 from sqlalchemy.orm import Session
 from app import models
 
 logger = logging.getLogger("docushield.gnn")
 
-class FraudGCN(nn_Module):
-    """
-    Graph Convolutional Network (GCN) for dynamic fraud ring classification.
-    Takes 5-dimensional node features:
-      - 4-dim one-hot node type encoding (Applicant, Property, Phone, Document)
-      - 1-dim base fraud/risk score (normalized [0, 1])
-    Outputs a single fraud probability score.
-    """
-    def __init__(self, in_channels=5, hidden_channels=16, out_channels=1):
-        super().__init__()
-        self.conv1 = GCNConv(in_channels, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, out_channels)
+def is_gnn_available() -> bool:
+    try:
+        import torch
+        import torch_geometric
+        return True
+    except ImportError:
+        return False
 
-    def forward(self, x, edge_index):
-        # Layer 1
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
-        # Layer 2
-        x = self.conv2(x, edge_index)
-        return torch.sigmoid(x)
+_GNN_MODEL_CLASS = None
+
+def get_gnn_model_class():
+    global _GNN_MODEL_CLASS
+    if _GNN_MODEL_CLASS is not None:
+        return _GNN_MODEL_CLASS
+    
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch_geometric.nn import GCNConv
+    
+    class FraudGCN(nn.Module):
+        """
+        Graph Convolutional Network (GCN) for dynamic fraud ring classification.
+        Takes 5-dimensional node features:
+          - 4-dim one-hot node type encoding (Applicant, Property, Phone, Document)
+          - 1-dim base fraud/risk score (normalized [0, 1])
+        Outputs a single fraud probability score.
+        """
+        def __init__(self, in_channels=5, hidden_channels=16, out_channels=1):
+            super().__init__()
+            self.conv1 = GCNConv(in_channels, hidden_channels)
+            self.conv2 = GCNConv(hidden_channels, out_channels)
+
+        def forward(self, x, edge_index):
+            # Layer 1
+            x = self.conv1(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=0.2, training=self.training)
+            # Layer 2
+            x = self.conv2(x, edge_index)
+            return torch.sigmoid(x)
+            
+    _GNN_MODEL_CLASS = FraudGCN
+    return _GNN_MODEL_CLASS
 
 def build_pyg_data(graph_data: dict):
-    if not torch_available:
+    if not is_gnn_available():
         return None, {}
+    import torch
+    from torch_geometric.data import Data
     """
     Converts graph nodes and relationships dictionary from Neo4j (or SQLite fallback)
     into a PyTorch Geometric Data object.
@@ -167,7 +178,7 @@ def build_pyg_data(graph_data: dict):
     return data, node_id_to_idx
 
 def train_gnn_model(db: Session, epochs: int = 150) -> dict:
-    if not torch_available:
+    if not is_gnn_available():
         logger.warning("GNN model training bypassed: PyTorch/PyG libraries not installed.")
         return {
             "final_loss": 0.0,
@@ -182,9 +193,11 @@ def train_gnn_model(db: Session, epochs: int = 150) -> dict:
     Builds the graph from Neo4j/SQLite, trains the GCN model on synthetic fraud labels,
     saves the weights to models/gnn_model.pth, and returns training metrics.
     """
+    import torch
+    import torch.nn as nn
+    import numpy as np
     # Fix random seeds for determinism
     torch.manual_seed(0)
-    import numpy as np
     np.random.seed(0)
 
     from app.services import neo4j_service
@@ -192,6 +205,7 @@ def train_gnn_model(db: Session, epochs: int = 150) -> dict:
     
     data, _ = build_pyg_data(graph_data)
     
+    FraudGCN = get_gnn_model_class()
     model = FraudGCN(in_channels=5, hidden_channels=16, out_channels=1)
     
     # Defensive check: if no graph is loaded or no document nodes exist to train
@@ -262,12 +276,13 @@ def predict_graph_risk(
         close_db = False
         
     try:
-        if not torch_available:
+        if not is_gnn_available():
             logger.warning("GNN graph risk prediction bypassed: PyTorch/PyG libraries not installed.")
             return {
                 "gnn_fraud_probability": 0.0,
                 "risk_level": "Low"
             }
+        import torch
         
         from app.services import neo4j_service
         graph_data = neo4j_service.get_graph_network(db)
@@ -367,6 +382,7 @@ def predict_graph_risk(
         data, node_id_to_idx = build_pyg_data(graph_data)
         
         # Load GNN Model
+        FraudGCN = get_gnn_model_class()
         model = FraudGCN(in_channels=5, hidden_channels=16, out_channels=1)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.abspath(os.path.join(current_dir, "..", "..", "models", "gnn_model.pth"))

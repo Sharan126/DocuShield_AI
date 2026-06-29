@@ -12,7 +12,6 @@ try:
     import torch
     from torch.utils.data import Dataset, DataLoader
     from torchvision import transforms
-    from sklearn.model_selection import train_test_split
     torch_available = True
 except ImportError:
     # Dummy mock transforms and datasets if PyTorch is not available
@@ -153,10 +152,7 @@ def load_dataset_splits(
     val_ratio: float = 0.15, 
     test_ratio: float = 0.15
 ) -> Tuple[List[str], List[int], List[str], List[int], List[str], List[int]]:
-    """
-    Scans the dataset directories, matches image files, maps labels,
-    and performs a stratified split based on document type and fraud label.
-    """
+    from sklearn.model_selection import train_test_split
     genuine_dir = os.path.join(dataset_dir, "genuine")
     tampered_dir = os.path.join(dataset_dir, "tampered")
     

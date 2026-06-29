@@ -1,8 +1,25 @@
 import os
 import json
 import datetime
+import numpy as np
 from PIL import Image, ImageChops
 from app.config import settings
+
+def numpy_convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """
+    Pure NumPy implementation of 2D convolution with edge padding, 
+    mimicking scipy.signal.convolve2d(..., mode='same').
+    """
+    kh, kw = kernel.shape
+    ph, pw = kh // 2, kw // 2
+    # Pad image with edge pixel duplication
+    padded = np.pad(image, ((ph, ph), (pw, pw)), mode='edge')
+    # Compute convolution
+    out = np.zeros_like(image)
+    for i in range(kh):
+        for j in range(kw):
+            out += padded[i : i + image.shape[0], j : j + image.shape[1]] * kernel[i, j]
+    return out
 
 def run_error_level_analysis(image_path: str, quality: int = 95, scale: int = 25) -> str:
     """
@@ -343,8 +360,7 @@ def analyze_image_quality(file_path: str) -> dict:
                 gray = np.array(PIL_img.convert("L")).astype(np.float32)
             # 3x3 Laplacian filter fallback
             kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
-            from scipy.signal import convolve2d
-            laplacian = convolve2d(gray, kernel, mode='same')
+            laplacian = numpy_convolve2d(gray, kernel)
             sharpness = np.var(laplacian)
             
         brightness = np.mean(gray)
@@ -353,8 +369,7 @@ def analyze_image_quality(file_path: str) -> dict:
         # Simple noise estimation (using high-frequency component)
         kernel_h = np.array([[1, -2, 1], [-2, 4, -2], [1, -2, 1]])
         try:
-            from scipy.signal import convolve2d
-            noise_map = convolve2d(gray, kernel_h, mode='same')
+            noise_map = numpy_convolve2d(gray, kernel_h)
             noise = np.mean(np.abs(noise_map)) * np.sqrt(np.pi / 2.0) / 6.0
         except Exception:
             noise = 0.0

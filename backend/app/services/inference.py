@@ -3,15 +3,15 @@ import io
 import logging
 from typing import Union, Dict, Any
 from PIL import Image
-# Optional/lazy imports
-torch_available = False
-try:
-    import torch
-    torch_available = True
-except ImportError:
-    pass
 
 logger = logging.getLogger("docushield.ml.inference")
+
+def is_torch_available() -> bool:
+    try:
+        import torch
+        return True
+    except ImportError:
+        return False
 
 
 class InferenceService:
@@ -20,23 +20,27 @@ class InferenceService:
     on provided document images (either from file paths or in-memory bytes).
     """
     def __init__(self, model_path: str = None):
+        self.torch_available = is_torch_available()
         if model_path is None:
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             model_path = os.path.join(base_dir, "models", "model.pth")
             
-        if not torch_available:
+        if not self.torch_available:
             logger.warning("InferenceService initialized without PyTorch. Predictions will be mocked.")
             self.model = None
             self.device = "cpu"
             return
             
+        import torch
         self.model_path = model_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self._load_model()
 
     def _load_model(self):
-        if not torch_available:
+        if not self.torch_available:
             return None
+            
+        import torch
             
         # 1. Determine model architecture from metadata
         model_name = "resnet50"  # default fallback
@@ -72,7 +76,7 @@ class InferenceService:
         return model
 
     def predict(self, image_input: Union[str, bytes]) -> Dict[str, Any]:
-        if not torch_available:
+        if not self.torch_available:
             logger.warning("InferenceService.predict called without PyTorch. Returning fallback genuine prediction.")
             return {
                 "prediction": "Genuine",
@@ -90,6 +94,7 @@ class InferenceService:
                 image = Image.open(image_input).convert("RGB")
             
             # Preprocess image and add batch dimension
+            import torch
             from app.services.dataset_loader import val_test_transforms
             input_tensor = val_test_transforms(image).unsqueeze(0).to(self.device)
             
