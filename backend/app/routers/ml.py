@@ -1,6 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from pydantic import BaseModel, Field
-from app.services import ml_pipeline
 import logging
 
 logger = logging.getLogger("docushield.routers.ml")
@@ -31,6 +30,7 @@ class PredictResponse(BaseModel):
     description="Analyzes an uploaded document image (PNG/JPG/JPEG) and predicts if it is Genuine or Tampered."
 )
 async def predict(file: UploadFile = File(..., description="Document image file to analyze")):
+    from app.services import ml_pipeline
     # Validate file extension
     ext = file.filename.split(".")[-1].lower() if file.filename else ""
     if ext not in ["jpg", "jpeg", "png"]:
@@ -70,6 +70,7 @@ async def predict(file: UploadFile = File(..., description="Document image file 
     description="Computes a weighted final risk score combining the ML pipeline outcome and the forensics assessment."
 )
 def risk_score(payload: RiskScoreRequest):
+    from app.services import ml_pipeline
     try:
         final_score = ml_pipeline.combine_risk_score(
             ml_score=payload.ml_score,

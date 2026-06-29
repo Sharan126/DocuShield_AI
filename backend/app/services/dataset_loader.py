@@ -6,10 +6,33 @@ import io
 import numpy as np
 from PIL import Image, ImageFilter
 from typing import List, Tuple, Optional
-import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from sklearn.model_selection import train_test_split
+# Safe imports for optional ML dependencies
+torch_available = False
+try:
+    import torch
+    from torch.utils.data import Dataset, DataLoader
+    from torchvision import transforms
+    from sklearn.model_selection import train_test_split
+    torch_available = True
+except ImportError:
+    # Dummy mock transforms and datasets if PyTorch is not available
+    class MockCompose:
+        def __init__(self, *args, **kwargs): pass
+        def __call__(self, img): return img
+    
+    class DummyTransforms:
+        def Compose(self, *args, **kwargs): return MockCompose()
+        def Resize(self, *args, **kwargs): return MockCompose()
+        def ToTensor(self, *args, **kwargs): return MockCompose()
+        def Normalize(self, *args, **kwargs): return MockCompose()
+        def RandomRotation(self, *args, **kwargs): return MockCompose()
+        def RandomHorizontalFlip(self, *args, **kwargs): return MockCompose()
+        def ColorJitter(self, *args, **kwargs): return MockCompose()
+        
+    transforms = DummyTransforms()
+    Dataset = object
+    DataLoader = object
+
 import logging
 
 logger = logging.getLogger("docushield.ml.dataset")

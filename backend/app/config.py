@@ -10,6 +10,7 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./docushield.db")
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./media/uploads")
     ELA_DIR: str = os.getenv("ELA_DIR", "./media/ela")
+    DISABLE_HEAVY_AI: bool = os.getenv("DISABLE_HEAVY_AI", "false").lower() in ("true", "1", "yes")
 
     # Roles definitions
     ROLE_ADMIN: str = "Admin"

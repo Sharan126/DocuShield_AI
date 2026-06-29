@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, security
-from app.services import neo4j_service
-
 router = APIRouter(prefix="/graph", tags=["graph"])
 
 @router.get("/network")
@@ -11,6 +9,7 @@ def get_fraud_graph_network(
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
+    from app.services import neo4j_service
     """
     Returns nodes, edges, and fraud syndicate alerts from Neo4j (or SQLite fallback).
     Includes dynamic GNN-based risk classification summary.

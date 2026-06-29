@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas, security
 from app.config import settings
-from app.services import forensics, ocr, validator, risk_score, model_inference, layoutlmv3_service, neo4j_service, signature_service, ml_pipeline
 logger = logging.getLogger("docushield.pipeline")
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -22,6 +21,11 @@ def upload_documents(
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
+    from app.services import (
+        forensics, ocr, validator, risk_score,
+        layoutlmv3_service, neo4j_service,
+        signature_service, ml_pipeline
+    )
     results = []
     
     for upload_file in files:
@@ -425,6 +429,7 @@ def cross_validate_documents(
     current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
     db: Session = Depends(get_db)
 ):
+    from app.services import ocr, validator
     if doc_id_1.isdigit():
         doc1 = db.query(models.Document).filter(models.Document.id == int(doc_id_1)).first()
     else:

@@ -4,12 +4,6 @@ os.environ['FLAGS_use_onednn'] = '0'
 import re
 import logging
 
-# Import torch first to avoid Windows DLL WinError 127 loading conflicts
-try:
-    import torch
-except ImportError:
-    pass
-
 logger = logging.getLogger("docushield.ocr")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -588,6 +582,24 @@ def extract_fields_from_text(text: str, doc_type: str = None) -> dict:
     }
 
 
+_ocr_engine = None
+
+def get_ocr_engine():
+    global _ocr_engine
+    if _ocr_engine is None:
+        from app.config import settings
+        if getattr(settings, "DISABLE_HEAVY_AI", False):
+            logger.info("PaddleOCR initialization bypassed due to DISABLE_HEAVY_AI=True config.")
+            return None
+        try:
+            from paddleocr import PaddleOCR
+            _ocr_engine = PaddleOCR(lang='en', enable_mkldnn=False)
+        except ImportError:
+            logger.warning("PaddleOCR bypassed: paddleocr library not installed.")
+            return None
+    return _ocr_engine
+
+
 def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
     """
     Extracts actual text from a PDF or image file.
@@ -626,9 +638,12 @@ def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
     # Otherwise treat as image (PNG, JPG, JPEG, TIFF, BMP)
     else:
         try:
-            from paddleocr import PaddleOCR
-            ocr_engine = PaddleOCR(lang='en', enable_mkldnn=False)
-            result = ocr_engine.ocr(file_path)
+            ocr_engine = get_ocr_engine()
+            if ocr_engine is None:
+                ocr_status = "paddle_ocr_missing"
+                result = None
+            else:
+                result = ocr_engine.ocr(file_path)
 
             text_lines = []
             if result and len(result) > 0 and result[0] is not None:

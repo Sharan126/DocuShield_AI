@@ -4,12 +4,6 @@ import json
 import logging
 from PIL import Image
 
-# Import torch first to resolve potential Windows DLL loading conflicts
-try:
-    import torch
-except ImportError:
-    pass
-
 logger = logging.getLogger("docushield.layoutlmv3")
 
 # Import shared utilities from ocr module
@@ -41,6 +35,22 @@ class LayoutLMv3ModelWrapper:
         if self.loaded:
             return
         
+        from app.config import settings
+        if getattr(settings, "DISABLE_HEAVY_AI", False):
+            logger.info("LayoutLMv3 model loading bypassed due to DISABLE_HEAVY_AI=True config.")
+            self.error_msg = "LayoutLMv3 disabled via config."
+            self.loaded = False
+            return
+
+        try:
+            import torch
+            import transformers
+        except ImportError:
+            logger.warning("LayoutLMv3 bypassed: transformers or torch library not installed.")
+            self.error_msg = "transformers/torch library not installed."
+            self.loaded = False
+            return
+            
         import threading
         
         def load_hf():
@@ -431,6 +441,7 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
             )
             
             # Perform forward pass (disable gradients for memory/speed on CPU)
+            import torch
             with torch.no_grad():
                 outputs = wrapper.model(**encoding)
             

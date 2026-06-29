@@ -2,17 +2,25 @@ import os
 import re
 import json
 import logging
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from sqlalchemy.orm import Session
-from torch_geometric.data import Data
-from torch_geometric.nn import GCNConv
+# Optional/lazy GNN imports
+torch_available = False
+nn_Module = object
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch_geometric.data import Data
+    from torch_geometric.nn import GCNConv
+    torch_available = True
+    nn_Module = nn.Module
+except ImportError:
+    pass
+
 from app import models
 
 logger = logging.getLogger("docushield.gnn")
 
-class FraudGCN(nn.Module):
+class FraudGCN(nn_Module):
     """
     Graph Convolutional Network (GCN) for dynamic fraud ring classification.
     Takes 5-dimensional node features:
@@ -35,6 +43,8 @@ class FraudGCN(nn.Module):
         return torch.sigmoid(x)
 
 def build_pyg_data(graph_data: dict):
+    if not torch_available:
+        return None, {}
     """
     Converts graph nodes and relationships dictionary from Neo4j (or SQLite fallback)
     into a PyTorch Geometric Data object.
@@ -156,6 +166,17 @@ def build_pyg_data(graph_data: dict):
     return data, node_id_to_idx
 
 def train_gnn_model(db: Session, epochs: int = 150) -> dict:
+    if not torch_available:
+        logger.warning("GNN model training bypassed: PyTorch/PyG libraries not installed.")
+        return {
+            "final_loss": 0.0,
+            "epochs_trained": 0,
+            "num_nodes": 0,
+            "num_edges": 0,
+            "predictions": [],
+            "targets": [],
+            "error": "PyTorch/PyG libraries not installed"
+        }
     """
     Builds the graph from Neo4j/SQLite, trains the GCN model on synthetic fraud labels,
     saves the weights to models/gnn_model.pth, and returns training metrics.
@@ -240,6 +261,13 @@ def predict_graph_risk(
         close_db = False
         
     try:
+        if not torch_available:
+            logger.warning("GNN graph risk prediction bypassed: PyTorch/PyG libraries not installed.")
+            return {
+                "gnn_fraud_probability": 0.0,
+                "risk_level": "Low"
+            }
+        
         from app.services import neo4j_service
         graph_data = neo4j_service.get_graph_network(db)
         
