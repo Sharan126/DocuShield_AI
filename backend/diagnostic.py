@@ -190,38 +190,41 @@ def run_diagnostics():
     if os.path.exists(model_path):
         logger.info(f"Found saved model checkpoint at {model_path}. Loading weights...")
         try:
-            model.load_state_dict(torch.load(model_path, map_location=device))
-            model.eval()
-            
-            all_preds = []
-            all_probs = []
-            all_labels = []
-            
-            with torch.no_grad():
-                for images, labels in test_loader:
-                    images = images.to(device)
-                    outputs = model(images).squeeze(1)
-                    probs = torch.sigmoid(outputs)
-                    preds = (probs >= 0.5).int()
-                    
-                    all_preds.extend(preds.cpu().numpy())
-                    all_probs.extend(probs.cpu().numpy())
-                    all_labels.extend(labels.numpy().astype(int))
-                    
-            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
-            acc = accuracy_score(all_labels, all_preds)
-            prec = precision_score(all_labels, all_preds, zero_division=0)
-            rec = recall_score(all_labels, all_preds, zero_division=0)
-            f1 = f1_score(all_labels, all_preds, zero_division=0)
-            cm = confusion_matrix(all_labels, all_preds)
-            
-            logger.info(f"Evaluation on Test Set (size {len(all_labels)}):")
-            logger.info(f"  Accuracy:  {acc:.4f}")
-            logger.info(f"  Precision: {prec:.4f}")
-            logger.info(f"  Recall:    {rec:.4f}")
-            logger.info(f"  F1-Score:  {f1:.4f}")
-            logger.info(f"  Confusion Matrix:\n{cm}")
-            logger.info(f"  Predictions distribution: Genuine predictions={all_preds.count(0)}, Tampered predictions={all_preds.count(1)}")
+            if test_loader is None:
+                logger.warning("No test data loader available. Skipping evaluation phase.")
+            else:
+                model.load_state_dict(torch.load(model_path, map_location=device))
+                model.eval()
+                
+                all_preds = []
+                all_probs = []
+                all_labels = []
+                
+                with torch.no_grad():
+                    for images, labels in test_loader:
+                        images = images.to(device)
+                        outputs = model(images).squeeze(1)
+                        probs = torch.sigmoid(outputs)
+                        preds = (probs >= 0.5).int()
+                        
+                        all_preds.extend(preds.cpu().numpy())
+                        all_probs.extend(probs.cpu().numpy())
+                        all_labels.extend(labels.numpy().astype(int))
+                        
+                from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
+                acc = accuracy_score(all_labels, all_preds)
+                prec = precision_score(all_labels, all_preds, zero_division=0)
+                rec = recall_score(all_labels, all_preds, zero_division=0)
+                f1 = f1_score(all_labels, all_preds, zero_division=0)
+                cm = confusion_matrix(all_labels, all_preds)
+                
+                logger.info(f"Evaluation on Test Set (size {len(all_labels)}):")
+                logger.info(f"  Accuracy:  {acc:.4f}")
+                logger.info(f"  Precision: {prec:.4f}")
+                logger.info(f"  Recall:    {rec:.4f}")
+                logger.info(f"  F1-Score:  {f1:.4f}")
+                logger.info(f"  Confusion Matrix:\n{cm}")
+                logger.info(f"  Predictions distribution: Genuine predictions={all_preds.count(0)}, Tampered predictions={all_preds.count(1)}")
             
         except Exception as e:
             logger.error(f"Failed to evaluate saved model: {e}")
