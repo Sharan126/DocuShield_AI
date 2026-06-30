@@ -45,11 +45,13 @@ class LayoutLMv3ModelWrapper:
         try:
             import torch
             import transformers
-        except ImportError:
-            logger.warning("LayoutLMv3 bypassed: transformers or torch library not installed.")
+        except ImportError as e:
+            logger.error("Deployment Failure: transformers or torch library not installed.")
             self.error_msg = "transformers/torch library not installed."
             self.loaded = False
-            return
+            raise ImportError(
+                "Deployment Failure: PyTorch or Transformers package is not installed."
+            ) from e
             
         import threading
         
@@ -71,15 +73,19 @@ class LayoutLMv3ModelWrapper:
         thread.join(timeout=15.0)
         
         if thread.is_alive():
-            logger.warning("LayoutLMv3 initialization timed out (15s limit). Fallback extraction will be used.")
+            logger.error("Deployment Failure: LayoutLMv3 initialization timed out (15s limit).")
             self.processor = None
             self.model = None
             self.loaded = False
+            raise TimeoutError("Deployment Failure: LayoutLMv3 model initialization timed out.")
         elif not self.loaded:
-            logger.warning(f"Failed to load LayoutLMv3 model/processor: {self.error_msg}. Fallback extraction will be used.")
+            logger.error(f"Deployment Failure: Failed to load LayoutLMv3 model/processor: {self.error_msg}")
             self.processor = None
             self.model = None
             self.loaded = False
+            raise RuntimeError(
+                f"Deployment Failure: Failed to load LayoutLMv3 model/processor: {self.error_msg}"
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

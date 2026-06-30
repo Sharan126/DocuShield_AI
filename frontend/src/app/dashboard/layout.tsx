@@ -188,7 +188,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {sidebarOpen && (
             <div className="m-4 p-4 border border-slate-800 rounded-xl bg-slate-950/40 backdrop-blur-md">
               <p className="text-[10px] text-slate-500 uppercase tracking-wider">Active Credentials</p>
-              <h4 className="text-sm font-bold text-slate-200 truncate">{user?.username}</h4>
+              <h4 className="text-sm font-bold text-slate-200 truncate">{user?.name || user?.username}</h4>
+              {user?.name && <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{user.username}</p>}
               <span className="inline-block mt-2 text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent uppercase">
                 {user?.role}
               </span>

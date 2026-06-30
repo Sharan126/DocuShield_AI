@@ -1,54 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
 import Link from "next/link";
-import { ShieldAlert, User, Mail, Lock, Shield } from "lucide-react";
+import { ShieldAlert, ArrowLeft, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
 
-import { apiFetch } from "@/lib/api";
-
-export default function RegisterPage() {
-  const router = useRouter();
-
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState(""); // Admin, Underwriter, Auditor
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const response = await apiFetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, role }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Registration failed. Try again.");
-      }
-
-      alert("Clearance request registered successfully. Proceed to Login using 123456 as OTP.");
-      router.push("/login");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function RequestAccessPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6 relative">
       <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
       <div className="absolute w-96 h-96 bg-indigo-900/10 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-lg relative z-10">
         
         {/* LOGO */}
         <div className="text-center mb-8 flex flex-col items-center">
@@ -63,93 +25,57 @@ export default function RegisterPage() {
 
         {/* CARD CONTAINER */}
         <div className="p-8 rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-md shadow-2xl glass-panel relative overflow-hidden scanline">
-          {error && (
-            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg text-center">
-              {error}
+          <div className="text-center mb-6">
+            <div className="inline-flex p-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 rounded-lg mb-3">
+              <AlertTriangle className="w-5 h-5" />
             </div>
-          )}
+            <h3 className="text-lg font-bold text-slate-200">Self-Registration Disabled</h3>
+            <p className="text-xs text-slate-500 mt-1">Reserve Bank of India (RBI) Access Control Directive Section 12.A</p>
+          </div>
 
-          <form onSubmit={handleRegister} className="space-y-5">
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-bold text-slate-200">Registration Portal</h3>
-              <p className="text-xs text-slate-500">Apply for security clearance keycards</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Username</label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  required
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Choose username"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-2.5 text-sm text-white transition-all"
-                />
-              </div>
+          <div className="space-y-4 text-xs text-slate-300">
+            <div className="p-4 border border-slate-800 bg-slate-950/60 rounded-xl space-y-2">
+              <p className="font-semibold text-slate-200">Security Access Policy</p>
+              <p className="leading-relaxed text-slate-400">
+                To prevent unauthorized access, DocuShield AI restricts account creation solely to Bank Managers (Administrators). 
+                Officers, Underwriters, and Auditors cannot self-register.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Bank Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="username@canarabank.in"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-2.5 text-sm text-white transition-all"
-                />
-              </div>
+            <div className="p-4 border border-slate-800 bg-slate-950/60 rounded-xl space-y-3">
+              <p className="font-semibold text-slate-200 flex items-center space-x-2">
+                <ShieldCheck className="w-4 h-4 text-accent" />
+                <span>How to Request Access:</span>
+              </p>
+              <p className="text-slate-400 leading-relaxed">
+                Contact your branch Bank Manager or IT Administrator. Send an email to the Security operations team with the following details:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
+                <li><strong className="text-slate-300">Full Name:</strong> Your official bank record name</li>
+                <li><strong className="text-slate-300">Corporate Email:</strong> Official `@canarabank.in` email address</li>
+                <li><strong className="text-slate-300">Username:</strong> Your requested login username</li>
+                <li><strong className="text-slate-300">Role Clearance:</strong> `Underwriter` (process scans) or `Auditor` (read-only audit trails)</li>
+              </ul>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Choose strong password"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-2.5 text-sm text-white transition-all"
-                />
-              </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href="mailto:admin.security@canarabank.in?subject=DocuShield%20AI%20Access%20Request"
+                className="flex-1 py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center space-x-2 animate-pulse"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Email IT Administrator</span>
+              </a>
+              
+              <Link
+                href="/login"
+                className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 font-semibold rounded-lg text-sm hover:bg-slate-900 transition-all flex justify-center items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Login</span>
+              </Link>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Assigned Role</label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <select
-                  required
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-accent outline-none rounded-lg pl-10 pr-4 py-2.5 text-sm text-white transition-all appearance-none cursor-pointer"
-                >
-                  <option value="" disabled>Select Assigned Role</option>
-                  <option value="Underwriter">Underwriter (Process Scans)</option>
-                  <option value="Auditor">Auditor (Check Compliance)</option>
-                  <option value="Admin">Admin (Control Settings)</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-accent text-slate-950 font-bold rounded-lg text-sm shadow-cyber hover:bg-cyan-400 hover:shadow-cyberGlow transition-all duration-300 flex justify-center items-center"
-            >
-              {loading ? "Registering user record..." : "Request Underwriting Clearance"}
-            </button>
-
-            <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-800/60">
-              Already have keycard access? <Link href="/login" className="text-accent hover:underline">Log In</Link>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

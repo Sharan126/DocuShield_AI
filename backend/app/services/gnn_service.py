@@ -277,11 +277,18 @@ def predict_graph_risk(
         
     try:
         if not is_gnn_available():
-            logger.warning("GNN graph risk prediction bypassed: PyTorch/PyG libraries not installed.")
-            return {
-                "gnn_fraud_probability": 0.0,
-                "risk_level": "Low"
-            }
+            from app.config import settings
+            if getattr(settings, "DISABLE_HEAVY_AI", False):
+                logger.warning("GNN graph risk prediction bypassed: PyTorch/PyG libraries not installed.")
+                return {
+                    "gnn_fraud_probability": 0.0,
+                    "risk_level": "Low"
+                }
+            else:
+                logger.error("Deployment Failure: PyTorch Geometric (torch-geometric) is not installed.")
+                raise ImportError(
+                    "Deployment Failure: PyTorch Geometric (torch-geometric) or torch dependencies are not installed."
+                )
         import torch
         
         from app.services import neo4j_service

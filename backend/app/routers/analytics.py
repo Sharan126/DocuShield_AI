@@ -7,14 +7,14 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/summary")
 def get_analytics_summary(
-    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter", "Auditor"])),
     db: Session = Depends(get_db)
 ):
     """
     Returns monthly case trends, risk distributions, and model performance metrics.
     """
     # Count database items
-    if current_user.role == "Admin":
+    if current_user.role in ["Admin", "Auditor"]:
         total_docs = db.query(models.Document).count()
         critical_cases = db.query(models.Document).filter(models.Document.risk_level == "Critical").count()
         high_cases = db.query(models.Document).filter(models.Document.risk_level == "High").count()

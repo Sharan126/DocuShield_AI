@@ -55,7 +55,7 @@ export default function LoginPage() {
       const data = await response.json();
       const token = data.access_token;
 
-      // Decode JWT payload to extract id, username, and role
+      // Decode JWT payload to extract id, username, role, and name
       const base64Url = token.split(".")[1];
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
       const jsonPayload = decodeURIComponent(
@@ -72,6 +72,7 @@ export default function LoginPage() {
         id: payload.id,
         username: payload.username,
         role: payload.role,
+        name: payload.name,
       });
 
       if (payload.role === "Auditor") {
@@ -248,7 +249,7 @@ export default function LoginPage() {
               </button>
 
               <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-800/60">
-                Need underwriter clearance? <Link href="/register" className="text-accent hover:underline">Register Account</Link>
+                Need underwriter clearance? <Link href="/register" className="text-accent hover:underline">Request Access</Link>
               </div>
             </form>
           )}

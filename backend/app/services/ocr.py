@@ -580,8 +580,6 @@ def extract_fields_from_text(text: str, doc_type: str = None) -> dict:
         "aadhaar_number": aadhaar_number,
         "pan_number": pan_number,
     }
-
-
 _ocr_engine = None
 
 def get_ocr_engine():
@@ -594,9 +592,11 @@ def get_ocr_engine():
         try:
             from paddleocr import PaddleOCR
             _ocr_engine = PaddleOCR(lang='en', enable_mkldnn=False)
-        except ImportError:
-            logger.warning("PaddleOCR bypassed: paddleocr library not installed.")
-            return None
+        except ImportError as e:
+            logger.error("Deployment Failure: PaddleOCR (paddleocr or paddlepaddle) library not installed.")
+            raise ImportError(
+                "Deployment Failure: PaddleOCR dependencies (paddleocr or paddlepaddle) are not installed."
+            ) from e
     return _ocr_engine
 
 
@@ -723,6 +723,8 @@ def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
             extracted_text = "\n".join(text_lines)
         except Exception as e:
             logger.error(f"[OCR Service] PaddleOCR extraction error: {e}")
+            if isinstance(e, (ImportError, FileNotFoundError, RuntimeError)) or "Deployment Failure" in str(e):
+                raise e
             ocr_status = "paddle_ocr_failed"
 
     # If OCR produced no text, report failure honestly — no hardcoded fallback

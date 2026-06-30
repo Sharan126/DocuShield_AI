@@ -22,7 +22,10 @@ services:
       - "6379:6379"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        - INSTALL_AI=true
     container_name: docushield_backend
     restart: always
     depends_on:

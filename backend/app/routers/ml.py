@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 import logging
+from app import models, security
 
 logger = logging.getLogger("docushield.routers.ml")
 
@@ -29,7 +30,10 @@ class PredictResponse(BaseModel):
     summary="Predict document authenticity",
     description="Analyzes an uploaded document image (PNG/JPG/JPEG) and predicts if it is Genuine or Tampered."
 )
-async def predict(file: UploadFile = File(..., description="Document image file to analyze")):
+async def predict(
+    file: UploadFile = File(..., description="Document image file to analyze"),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"]))
+):
     from app.services import ml_pipeline
     # Validate file extension
     ext = file.filename.split(".")[-1].lower() if file.filename else ""
@@ -69,7 +73,10 @@ async def predict(file: UploadFile = File(..., description="Document image file 
     summary="Combine ML and Forensic risk scores",
     description="Computes a weighted final risk score combining the ML pipeline outcome and the forensics assessment."
 )
-def risk_score(payload: RiskScoreRequest):
+def risk_score(
+    payload: RiskScoreRequest,
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"]))
+):
     from app.services import ml_pipeline
     try:
         final_score = ml_pipeline.combine_risk_score(

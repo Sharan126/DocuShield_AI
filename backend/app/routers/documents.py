@@ -132,6 +132,12 @@ def upload_documents(
         try:
             ocr_report = ocr.analyze_ocr_layout(saved_path, original_filename=upload_file.filename)
         except Exception as e:
+            if isinstance(e, (ImportError, FileNotFoundError, RuntimeError)) or "Deployment Failure" in str(e):
+                logger.critical(f"Critical deployment failure in OCR engine: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Deployment Error in OCR Engine: {str(e)}"
+                )
             ocr_report = {"text_blocks": [], "font_analysis": {"status": "Passed", "variances": []}, "signature_analysis": {"status": "Passed"}}
             ocr_failed = True
             
@@ -156,6 +162,12 @@ def upload_documents(
             }
         except Exception as ml_err:
             logger.error(f"ML Classifier prediction failed: {ml_err}")
+            if isinstance(ml_err, (ImportError, FileNotFoundError, RuntimeError)) or "Deployment Failure" in str(ml_err):
+                logger.critical(f"Critical deployment failure in ML Classifier: {ml_err}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Deployment Error in ML Classifier: {str(ml_err)}"
+                )
             ml_prediction = {"prediction": "genuine", "confidence": 0.5, "error": str(ml_err)}
             ml_score = 0.0
             ml_confidence = 50.0
@@ -171,6 +183,12 @@ def upload_documents(
             }))
         except Exception as layoutlm_err:
             logger.error(f"LayoutLMv3 intelligence extraction failed: {layoutlm_err}")
+            if isinstance(layoutlm_err, (ImportError, FileNotFoundError, RuntimeError, TimeoutError)) or "Deployment Failure" in str(layoutlm_err):
+                logger.critical(f"Critical deployment failure in LayoutLMv3: {layoutlm_err}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Deployment Error in LayoutLMv3: {str(layoutlm_err)}"
+                )
 
         # 5d. Run Graph Syndicate analysis
         # Determine document type from LayoutLM or OCR
@@ -228,6 +246,12 @@ def upload_documents(
             )
         except Exception as sig_err:
             logger.error(f"Signature verification failed: {sig_err}")
+            if isinstance(sig_err, (ImportError, FileNotFoundError, RuntimeError)) or "Deployment Failure" in str(sig_err):
+                logger.critical(f"Critical deployment failure in Signature Verification: {sig_err}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Deployment Error in Signature Verification: {str(sig_err)}"
+                )
 
         # 5f. Run GNN Syndicate Analysis
         gnn_report = {"gnn_fraud_probability": 0.0, "risk_level": "Low"}
@@ -242,6 +266,12 @@ def upload_documents(
             )
         except Exception as gnn_err:
             logger.error(f"GNN prediction failed in pipeline: {gnn_err}")
+            if isinstance(gnn_err, (ImportError, FileNotFoundError, RuntimeError)) or "Deployment Failure" in str(gnn_err):
+                logger.critical(f"Critical deployment failure in GNN prediction: {gnn_err}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Deployment Error in GNN: {str(gnn_err)}"
+                )
 
         # 6. Calculate Forensic Risk Score with document-type-aware field validation
         risk_report = risk_score.calculate_risk_score(
@@ -357,7 +387,7 @@ def upload_documents(
 
 @router.get("/", response_model=List[schemas.DocumentResponse])
 def list_documents(
-    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter", "Auditor"])),
     db: Session = Depends(get_db)
 ):
     if current_user.role == "Admin":
@@ -369,7 +399,7 @@ def list_documents(
 @router.get("/{doc_id}")
 def get_document_details(
     doc_id: str,
-    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter", "Auditor"])),
     db: Session = Depends(get_db)
 ):
     if doc_id.isdigit():
@@ -473,8 +503,8 @@ def cross_validate_documents(
     report = validator.perform_cross_validation([doc1_payload, doc2_payload])
     
     cross_val = models.CrossValidation(
-        primary_document_id=doc_id_1,
-        secondary_document_id=doc_id_2,
+        primary_document_id=doc1.id,
+        secondary_document_id=doc2.id,
         name_match=report["name_match"],
         address_match=report["address_match"],
         property_match=report["property_match"],
@@ -497,7 +527,7 @@ def cross_validate_documents(
 @router.get("/{doc_id}/download-pdf")
 def download_pdf_report(
     doc_id: str,
-    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter", "Auditor"])),
     db: Session = Depends(get_db)
 ):
     # To keep this zero-dependency and fast, we send a nice text/pdf mock content response
@@ -541,7 +571,7 @@ DocuShield AI Platform Underwriting Security
 @router.get("/{doc_id}/download-excel")
 def download_excel_report(
     doc_id: str,
-    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter"])),
+    current_user: models.User = Depends(security.RoleChecker(["Admin", "Underwriter", "Auditor"])),
     db: Session = Depends(get_db)
 ):
     if doc_id.isdigit():

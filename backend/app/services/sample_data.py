@@ -13,38 +13,46 @@ def seed_database(db: Session):
     # 2. Create Users (Admin, Underwriter, Auditor)
     admin_user = models.User(
         username="admin_canara",
+        name="Canara Admin",
         email="admin.security@canarabank.in",
-        hashed_password=security.get_password_hash("CanaraAdmin123"),
+        password_hash=security.get_password_hash("CanaraAdmin123"),
         role="Admin",
         is_active=True,
         otp_secret="MOCK_SECRET_ADMIN",
-        otp_verified=True
+        otp_verified=True,
+        created_by=None
     )
+    db.add(admin_user)
+    db.commit()
+    db.refresh(admin_user)
     
     underwriter_user = models.User(
         username="sharan_underwriter",
+        name="Sharan K",
         email="sharan.k@canarabank.in",
-        hashed_password=security.get_password_hash("CanaraWriter123"),
+        password_hash=security.get_password_hash("CanaraWriter123"),
         role="Underwriter",
         is_active=True,
         otp_secret="MOCK_SECRET_WRITER",
-        otp_verified=True
+        otp_verified=True,
+        created_by=admin_user.id
     )
 
     auditor_user = models.User(
         username="auditor_compliance",
+        name="Auditor Compliance",
         email="auditor.compliance@canarabank.in",
-        hashed_password=security.get_password_hash("CanaraAudit123"),
+        password_hash=security.get_password_hash("CanaraAudit123"),
         role="Auditor",
         is_active=True,
         otp_secret="MOCK_SECRET_AUDIT",
-        otp_verified=True
+        otp_verified=True,
+        created_by=admin_user.id
     )
 
-    db.add_all([admin_user, underwriter_user, auditor_user])
+    db.add_all([underwriter_user, auditor_user])
     db.commit()
     db.refresh(underwriter_user)
-    db.refresh(admin_user)
 
     # 3. Create Audit Logs
     initial_logs = [

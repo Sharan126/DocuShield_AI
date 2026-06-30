@@ -8,6 +8,7 @@ from PIL import Image
 logger = logging.getLogger("docushield.signature")
 
 cv2_available = False
+cv2_import_error = None
 try:
     # Try importing torch first to resolve potential DLL loading conflicts on Windows (WinError 127)
     try:
@@ -17,6 +18,7 @@ try:
     import cv2
     cv2_available = True
 except Exception as e:
+    cv2_import_error = e
     logger.warning(f"Failed to import cv2: {e}. OpenCV signature verification will be bypassed.")
 
 # Directory to store reference signatures (resolved absolute path to backend/media/signatures)
@@ -165,13 +167,21 @@ def verify_document_signature(
         text_blocks = []
 
     if not cv2_available:
-        logger.warning("signature_service: OpenCV not available. Bypassing signature verification.")
-        return {
-            "orb_match_count": 100,
-            "ssim_score": 1.0,
-            "signature_similarity": 1.0,
-            "possible_forgery": False
-        }
+        from app.config import settings
+        if getattr(settings, "DISABLE_HEAVY_AI", False):
+            logger.warning("signature_service: OpenCV not available. Bypassing signature verification.")
+            return {
+                "orb_match_count": 100,
+                "ssim_score": 1.0,
+                "signature_similarity": 1.0,
+                "possible_forgery": False
+            }
+        else:
+            logger.error(f"Deployment Failure: OpenCV is not installed. Details: {cv2_import_error}")
+            raise ImportError(
+                f"Deployment Failure: OpenCV library (opencv-python-headless) is not installed/functional. "
+                f"Details: {cv2_import_error}"
+            )
 
     if not applicant_name:
         applicant_name = "UNKNOWN_APPLICANT"

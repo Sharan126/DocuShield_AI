@@ -50,3 +50,38 @@ def run_db_migrations():
                 # Column probably already exists or table doesn't exist
                 pass
 
+        # Migrate users table
+        # 1. Rename hashed_password to password_hash if needed
+        try:
+            conn.execute(text("ALTER TABLE users RENAME COLUMN hashed_password TO password_hash"))
+        except Exception:
+            pass
+
+        # 2. Add password_hash column in case rename failed and it doesn't exist
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR"))
+        except Exception:
+            pass
+
+        # 3. Copy password hash values if both columns somehow coexist and password_hash is empty
+        try:
+            conn.execute(text("UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL AND hashed_password IS NOT NULL"))
+        except Exception:
+            pass
+
+        # 4. Add other new user fields
+        user_fields = [
+            ("name", "VARCHAR"),
+            ("created_by", "INTEGER"),
+            ("last_login", "DATETIME")
+        ]
+        for col, col_type in user_fields:
+            actual_type = col_type
+            if not is_sqlite and col_type == "DATETIME":
+                actual_type = "TIMESTAMP"
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {actual_type}"))
+            except Exception:
+                pass
+
+

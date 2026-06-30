@@ -26,10 +26,11 @@ class InferenceService:
             model_path = os.path.join(base_dir, "models", "model.pth")
             
         if not self.torch_available:
-            logger.warning("InferenceService initialized without PyTorch. Predictions will be mocked.")
-            self.model = None
-            self.device = "cpu"
-            return
+            logger.error("Deployment Failure: InferenceService initialized without PyTorch.")
+            raise ImportError(
+                "Deployment Failure: PyTorch is not available in the environment. "
+                "Ensure INSTALL_AI=true is passed during Docker build."
+            )
             
         import torch
         self.model_path = model_path
@@ -76,14 +77,8 @@ class InferenceService:
         return model
 
     def predict(self, image_input: Union[str, bytes]) -> Dict[str, Any]:
-        if not self.torch_available:
-            logger.warning("InferenceService.predict called without PyTorch. Returning fallback genuine prediction.")
-            return {
-                "prediction": "Genuine",
-                "confidence": 95.0,
-                "risk_level": "Low",
-                "raw_score": 5.0
-            }
+        if not self.torch_available or self.model is None:
+            raise RuntimeError("Deployment Failure: InferenceService cannot run predictions because PyTorch or models are not loaded.")
             
         try:
             if isinstance(image_input, bytes):

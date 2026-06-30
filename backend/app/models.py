@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from app.database import Base
 
 class User(Base):
@@ -8,13 +8,17 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
+    hashed_password = synonym("password_hash")
     role = Column(String, default="Underwriter")  # Admin, Underwriter, Auditor
     is_active = Column(Boolean, default=True)
     otp_secret = Column(String, nullable=True)
     otp_verified = Column(Boolean, default=False)
+    created_by = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    last_login = Column(DateTime, nullable=True)
 
     documents = relationship("Document", back_populates="uploader")
 

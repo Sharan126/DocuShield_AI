@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     role: str = "Underwriter"
+    name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -15,9 +16,27 @@ class UserResponse(UserBase):
     is_active: bool
     created_at: datetime
     otp_verified: bool
+    created_by: Optional[int] = None
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+class UserAdminCreate(BaseModel):
+    username: str
+    name: Optional[str] = None
+    email: EmailStr
+    password: str
+    role: str = "Underwriter"
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserPasswordResetAdmin(BaseModel):
+    password: str
 
 class UserLogin(BaseModel):
     username: str
