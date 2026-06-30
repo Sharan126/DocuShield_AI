@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 export default function LoginPage() {
   const router = useRouter();
   const authStore = useAuthStore();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://docushield-ai.onrender.com";
 
   const [mode, setMode] = useState<"login" | "forgot" | "reset">("login");
   const [username, setUsername] = useState("");
@@ -40,7 +41,7 @@ export default function LoginPage() {
 
     try {
       // Connect to FastAPI login
-      const response = await fetch("http://docushield-ai.onrender.com/api/auth/login", {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -92,7 +93,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`http://docushield-ai.onrender.com/api/auth/forgot-password?username=${encodeURIComponent(username)}`, {
+      const response = await fetch(`${apiUrl}/api/auth/forgot-password?username=${encodeURIComponent(username)}`, {
         method: "POST",
       });
 
@@ -123,7 +124,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://docushield-ai.onrender.com/api/auth/reset-password", {
+      const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, new_password: newPassword }),
