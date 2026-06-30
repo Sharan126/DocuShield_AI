@@ -127,7 +127,7 @@ Start the web microservice using Uvicorn (FastAPI developer server):
 ```bash
 python api.py
 ```
-*The web API will initialize and run on `http://localhost:8000`.*
+*The web API will initialize and run on `http://docushield-ai.onrender.com`.*
 
 ### API Endpoints
 *   `GET /`: Basic service health check.
@@ -142,7 +142,7 @@ You can upload files and receive JSON reports via standard POST requests.
 
 ### Curl Request (Image Analysis)
 ```bash
-curl -X POST -F "file=@test_files/sample_tampered.jpg" http://localhost:8000/detect
+curl -X POST -F "file=@test_files/sample_tampered.jpg" http://docushield-ai.onrender.com/detect
 ```
 
 ### Example JSON Response
@@ -204,10 +204,10 @@ curl -X POST -F "file=@test_files/sample_tampered.jpg" http://localhost:8000/det
     ],
     "explanation": "The document is classified as High Risk with an Authenticity Score of 10/100.\nDeductions were applied for the following reasons:\n  - Suspicious ELA regions detected (9 regions found) (-35 pts)\n  - Editing software metadata signature found (Adobe Photoshop 2025 (Windows)) (-10 pts)\n  - Temporal date anomalies detected (e.g. document modified post-creation or date spoofing) (-15 pts)\n  - Combination Penalty: Editing software signature coupled with active content changes (-20 pts)\n\nCritical Alert: High risk of tampering. Multiple critical anomalies exist. We detected active graphic alterations (ELA regions) or structural changes (incremental saves) combined with editing tool footprints or date inconsistencies.",
     "visual_outputs": {
-        "timeline_report_url": "http://localhost:8000/output/sample_tampered_timeline_report.txt",
-        "ela_diff_url": "http://localhost:8000/output/sample_tampered_ela_diff.png",
-        "ela_heatmap_url": "http://localhost:8000/output/sample_tampered_ela_heatmap.png",
-        "suspicious_regions_url": "http://localhost:8000/output/sample_tampered_suspicious_regions.png"
+        "timeline_report_url": "http://docushield-ai.onrender.com/output/sample_tampered_timeline_report.txt",
+        "ela_diff_url": "http://docushield-ai.onrender.com/output/sample_tampered_ela_diff.png",
+        "ela_heatmap_url": "http://docushield-ai.onrender.com/output/sample_tampered_ela_heatmap.png",
+        "suspicious_regions_url": "http://docushield-ai.onrender.com/output/sample_tampered_suspicious_regions.png"
     }
 }
 ```

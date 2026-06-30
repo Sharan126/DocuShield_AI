@@ -40,7 +40,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 2. Mount static files directory
 # This allows callers to fetch ELA heatmaps and bounding-box images via standard web URLs.
-# For example, http://localhost:8000/output/sample_tampered_ela_heatmap.png
+# For example, http://docushield-ai.onrender.com/output/sample_tampered_ela_heatmap.png
 app.mount("/output", StaticFiles(directory=OUTPUT_DIR), name="output")
 
 @app.get("/")
@@ -146,7 +146,7 @@ async def detect_forgery(file: UploadFile = File(...)):
             
         # 10. Inject visual output URLs pointing to static mount for frontend convenience
         base_name = os.path.splitext(filename)[0]
-        host_url = "http://localhost:8000"  # Default port, can be overridden by frontend
+        host_url = "http://docushield-ai.onrender.com"  # Default port, can be overridden by frontend
         
         visual_outputs = {
             "timeline_report_url": f"{host_url}/output/{base_name}_timeline_report.txt"

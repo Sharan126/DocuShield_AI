@@ -108,7 +108,7 @@ pip install -r requirements.txt
 # Start FastAPI dev server
 uvicorn app.main:app --reload --port 8000
 ```
-*The FastAPI swagger API docs will now be live at `http://localhost:8000/docs`.*
+*The FastAPI swagger API docs will now be live at `http://docushield-ai.onrender.com/docs`.*
 
 #### 2. Frontend Setup:
 ```bash
@@ -134,7 +134,7 @@ Ingest and launch the entire enterprise stack with a single command:
 docker-compose up --build -d
 ```
 Once built and deployed:
-- **Underwriting Dashboard**: `http://localhost:3000`
-- **FastAPI Backend Gateway**: `http://localhost:8000`
+- **Underwriting Dashboard**: `http://docushield-ai.onrender.com`
+- **FastAPI Backend Gateway**: `http://docushield-ai.onrender.com`
 - **PostgreSQL Database Engine**: `port 5432`
 - **Redis Job Server**: `port 6379`

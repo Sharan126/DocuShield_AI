@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     try {
       // Connect to FastAPI login
-      const response = await fetch("http://localhost:8000/api/auth/login", {
+      const response = await fetch("http://docushield-ai.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -92,7 +92,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/auth/forgot-password?username=${encodeURIComponent(username)}`, {
+      const response = await fetch(`http://docushield-ai.onrender.com/api/auth/forgot-password?username=${encodeURIComponent(username)}`, {
         method: "POST",
       });
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
       const data = await response.json();
       setMessage(data.message || "Simulated verification link logged in system Audit Logs.");
-      
+
       // Auto transition to reset password view after a short delay
       setTimeout(() => {
         setMode("reset");
@@ -123,7 +123,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/auth/reset-password", {
+      const response = await fetch("http://docushield-ai.onrender.com/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, new_password: newPassword }),
@@ -136,7 +136,7 @@ export default function LoginPage() {
 
       const data = await response.json();
       setMessage(data.message || "Password updated successfully!");
-      
+
       // Back to login after a short delay
       setTimeout(() => {
         setMode("login");
@@ -157,7 +157,7 @@ export default function LoginPage() {
       <div className="absolute w-96 h-96 bg-indigo-900/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        
+
         {/* LOGO */}
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="p-3 bg-cyan-950/60 border border-accent/20 rounded-2xl mb-4 shadow-cyber">
