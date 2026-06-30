@@ -13,12 +13,13 @@ Base.metadata.create_all(bind=engine)
 # Run database migrations for new columns
 run_db_migrations()
 
-# Seed database on start
-db = SessionLocal()
-try:
-    seed_database(db)
-finally:
-    db.close()
+# Seed database on start (conditional on SEED_DATABASE environment variable)
+if os.getenv("SEED_DATABASE", "false").lower() == "true":
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    finally:
+        db.close()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
