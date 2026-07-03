@@ -199,9 +199,18 @@ function ForensicScannerContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Verification Risk Gauge Dial (Colspan 1) */}
-        <div className="border border-slate-800 rounded-2xl bg-slate-900/40 p-6 glass-panel flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <div className="border border-slate-800 rounded-2xl bg-slate-900/40 p-6 glass-panel flex flex-col items-center justify-center text-center relative">
           <div className="absolute inset-0 cyber-grid opacity-10 pointer-events-none" />
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Tampering Risk Coefficient</h4>
+          
+          <div className="flex items-center justify-center space-x-1.5 mb-6">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tampering Risk Coefficient</h4>
+            <div className="relative group flex items-center">
+              <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-pointer hover:text-slate-400" />
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-slate-800 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans normal-case text-center leading-normal">
+                Estimated probability that the uploaded document has been tampered with.
+              </div>
+            </div>
+          </div>
           
           {/* Radial meter */}
           <div className="w-40 h-40 rounded-full border-4 border-slate-800 flex flex-col items-center justify-center relative bg-slate-950/60 shadow-cyber">
@@ -225,8 +234,15 @@ function ForensicScannerContent() {
             }`}>
               {details.risk_level} Classification
             </span>
-            <p className="text-[11px] text-slate-500">
-              Confidence Accuracy Rate: <span className="font-bold text-slate-300 font-mono">{details.confidence_score}%</span>
+            <p className="text-[11px] text-slate-500 flex items-center justify-center space-x-1.5">
+              <span>Confidence Accuracy Rate:</span>
+              <span className="font-bold text-slate-300 font-mono">{details.confidence_score}%</span>
+              <span className="relative group inline-block">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-pointer hover:text-slate-400" />
+                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-slate-800 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans font-normal text-center normal-case leading-normal">
+                  Confidence level of the AI model's prediction.
+                </span>
+              </span>
             </p>
           </div>
 

@@ -11,7 +11,8 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Fingerprint
+  Fingerprint,
+  HelpCircle
 } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
@@ -94,7 +95,7 @@ export default function DashboardHome() {
           className="flex items-center space-x-2 px-5 py-3 bg-accent text-slate-950 hover:bg-cyan-400 font-bold rounded-lg text-xs shadow-cyber transition-all duration-300 hover:scale-105"
         >
           <UploadCloud className="w-4 h-4" />
-          <span>Upload Loan Document</span>
+          <span>Upload Document</span>
         </Link>
       </div>
 
@@ -102,10 +103,18 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
         {/* Total Scanned */}
-        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative overflow-hidden">
-          <div className="flex justify-between items-start">
+        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
             <div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Total Loan Files</p>
+              <div className="flex items-center space-x-1.5 mb-1">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Total Loan Files</p>
+                <div className="relative group flex items-center">
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-pointer hover:text-slate-400" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-slate-800 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans normal-case text-center leading-normal">
+                    Total number of uploaded loan documents in the verification queue.
+                  </div>
+                </div>
+              </div>
               <h3 className="text-3xl font-extrabold text-white font-mono">{documents.length}</h3>
             </div>
             <span className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-accent">
@@ -119,10 +128,18 @@ export default function DashboardHome() {
         </div>
 
         {/* Critical Alerts */}
-        <div className="p-5 border border-red-500/20 rounded-xl bg-red-950/5 relative overflow-hidden">
-          <div className="flex justify-between items-start">
+        <div className="p-5 border border-red-500/20 rounded-xl bg-red-950/5 relative h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
             <div>
-              <p className="text-[10px] text-red-500 uppercase tracking-wider mb-1">Critical Forgeries</p>
+              <div className="flex items-center space-x-1.5 mb-1">
+                <p className="text-[10px] text-red-500 uppercase tracking-wider">Critical Forgeries</p>
+                <div className="relative group flex items-center">
+                  <HelpCircle className="w-3.5 h-3.5 text-red-400 cursor-pointer hover:text-red-300" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-red-900/30 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans normal-case text-center leading-normal">
+                    Number of documents identified with critical compression, font, or metadata tampering.
+                  </div>
+                </div>
+              </div>
               <h3 className="text-3xl font-extrabold text-red-400 font-mono glow-red">{criticalCount}</h3>
             </div>
             <span className="p-2 bg-red-950/20 border border-red-500/30 rounded-lg text-red-400">
@@ -135,10 +152,18 @@ export default function DashboardHome() {
         </div>
 
         {/* Model Accuracy */}
-        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative overflow-hidden">
-          <div className="flex justify-between items-start">
+        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
             <div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Detection Accuracy</p>
+              <div className="flex items-center space-x-1.5 mb-1">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Detection Accuracy</p>
+                <div className="relative group flex items-center">
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-pointer hover:text-slate-400" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-slate-800 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans normal-case text-center leading-normal">
+                    Overall performance of the document fraud detection pipeline.
+                  </div>
+                </div>
+              </div>
               <h3 className="text-3xl font-extrabold text-emerald-400 font-mono">99.4%</h3>
             </div>
             <span className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-emerald-400">
@@ -151,10 +176,18 @@ export default function DashboardHome() {
         </div>
 
         {/* System Health */}
-        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative overflow-hidden">
-          <div className="flex justify-between items-start">
+        <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start w-full">
             <div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">RBI Compliance</p>
+              <div className="flex items-center space-x-1.5 mb-1">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">RBI Compliance</p>
+                <div className="relative group flex items-center">
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-pointer hover:text-slate-400" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2.5 bg-slate-950/95 border border-slate-800 text-[10px] text-slate-400 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-cyber font-sans normal-case text-center leading-normal">
+                    Indicates whether the analyzed document satisfies the configured RBI validation checks.
+                  </div>
+                </div>
+              </div>
               <h3 className="text-3xl font-extrabold text-white font-mono">100%</h3>
             </div>
             <span className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-accent">
@@ -186,60 +219,79 @@ export default function DashboardHome() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-800">
-                <tr>
-                  <th className="pb-3">Loan Document</th>
-                  <th className="pb-3">Risk Rating</th>
-                  <th className="pb-3 text-center">Confidence</th>
-                  <th className="pb-3">Uploaded Date</th>
-                  <th className="pb-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-slate-800/20 transition-all">
-                    <td className="py-4 flex items-center space-x-3">
-                      <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-400">
-                        <Fingerprint className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="font-bold text-slate-200 block max-w-[200px] truncate">{doc.file_name}</span>
-                        <span className="text-[9px] text-slate-500 block uppercase font-mono">{doc.file_type} Scan</span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <span className={`inline-block px-2.5 py-0.5 rounded font-bold font-mono text-[9px] uppercase border ${
-                        doc.risk_level === "Critical" ? "bg-red-500/10 border-red-500/30 text-red-400" :
-                        doc.risk_level === "High" ? "bg-orange-500/10 border-orange-500/30 text-orange-400" :
-                        "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                      }`}>
-                        {doc.risk_level} ({doc.fraud_score}%)
-                      </span>
-                    </td>
-                    <td className="py-4 text-center font-mono font-semibold text-slate-400">
-                      {doc.confidence_score}%
-                    </td>
-                    <td className="py-4 text-slate-500 font-mono" suppressHydrationWarning={true}>
-                      {new Date(doc.uploaded_at).toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
-                      })}
-                    </td>
-                    <td className="py-4 text-right">
-                      <Link 
-                        href={`/dashboard/scanner?id=${doc.id}`}
-                        className="inline-flex items-center space-x-1 text-[10px] bg-slate-950 border border-slate-850 hover:border-accent text-accent px-2.5 py-1 rounded"
-                      >
-                        <span>Analyze</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    </td>
+          {documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-full text-slate-500 shadow-cyber">
+                <FileText className="w-8 h-8 text-accent animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-slate-300">No documents uploaded yet</p>
+                <p className="text-xs text-slate-500 max-w-sm">Upload a document to begin fraud analysis.</p>
+              </div>
+              <Link 
+                href="/dashboard/upload"
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-accent/10 border border-accent/30 text-accent hover:bg-accent hover:text-slate-950 font-bold rounded-lg text-xs transition-all duration-300"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>Upload Document</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-800">
+                  <tr>
+                    <th className="pb-3">Loan Document</th>
+                    <th className="pb-3">Risk Rating</th>
+                    <th className="pb-3 text-center">Confidence</th>
+                    <th className="pb-3">Uploaded Date</th>
+                    <th className="pb-3 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {documents.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-slate-800/20 transition-all">
+                      <td className="py-4 flex items-center space-x-3">
+                        <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-400">
+                          <Fingerprint className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-slate-200 block max-w-[200px] truncate">{doc.file_name}</span>
+                          <span className="text-[9px] text-slate-500 block uppercase font-mono">{doc.file_type} Scan</span>
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <span className={`inline-block px-2.5 py-0.5 rounded font-bold font-mono text-[9px] uppercase border ${
+                          doc.risk_level === "Critical" ? "bg-red-500/10 border-red-500/30 text-red-400" :
+                          doc.risk_level === "High" ? "bg-orange-500/10 border-orange-500/30 text-orange-400" :
+                          "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        }`}>
+                          {doc.risk_level} ({doc.fraud_score}%)
+                        </span>
+                      </td>
+                      <td className="py-4 text-center font-mono font-semibold text-slate-400">
+                        {doc.confidence_score}%
+                      </td>
+                      <td className="py-4 text-slate-500 font-mono" suppressHydrationWarning={true}>
+                        {new Date(doc.uploaded_at).toLocaleString("en-IN", {
+                          day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                        })}
+                      </td>
+                      <td className="py-4 text-right">
+                        <Link 
+                          href={`/dashboard/scanner?id=${doc.id}`}
+                          className="inline-flex items-center space-x-1 text-[10px] bg-slate-950 border border-slate-850 hover:border-accent text-accent px-2.5 py-1 rounded"
+                        >
+                          <span>Analyze Document</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Quick Guide Card */}
