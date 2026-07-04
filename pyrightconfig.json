@@ -1,9 +1,10 @@
 {
-  "venvPath": "backend",
+  "venvPath": "./backend",
   "venv": ".venv",
   "extraPaths": [
     "backend",
-    "document_forensics"
+    "document_forensics",
+    "backend\\.venv\\Lib\\site-packages"
   ],
   "reportImportCycles": "none"
 }

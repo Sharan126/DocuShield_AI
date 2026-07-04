@@ -1,10 +1,13 @@
 import datetime
+# Triggering pyright recheck
+# pyrefly: ignore [missing-import]
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship, synonym
 from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __allow_unmapped__ = True
 
     id: int = Column(Integer, primary_key=True, index=True)  # type: ignore
     username: str = Column(String, unique=True, index=True, nullable=False)  # type: ignore

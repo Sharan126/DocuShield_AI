@@ -1,13 +1,17 @@
 {
     "git.ignoreLimitWarning": true,
     "python.defaultInterpreterPath": "backend/.venv/Scripts/python.exe",
-    "python.analysis.venvPath": "backend",
+    "python.analysis.venvPath": "${workspaceFolder}/backend",
     "python.analysis.venv": ".venv",
     "python.analysis.extraPaths": [
-        "backend"
+        "${workspaceFolder}/backend",
+        "${workspaceFolder}/document_forensics",
+        "${workspaceFolder}/backend/.venv/Lib/site-packages"
     ],
     "python.autoComplete.extraPaths": [
-        "backend"
+        "${workspaceFolder}/backend",
+        "${workspaceFolder}/document_forensics",
+        "${workspaceFolder}/backend/.venv/Lib/site-packages"
     ],
     "python.analysis.indexing": true
 }
