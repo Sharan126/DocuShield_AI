@@ -1,7 +1,7 @@
 import os
 import io
 import logging
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Optional
 from PIL import Image
 
 logger = logging.getLogger("docushield.ml.inference")
@@ -19,7 +19,7 @@ class InferenceService:
     Handles loading the trained PyTorch model and running inference
     on provided document images (either from file paths or in-memory bytes).
     """
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_path: Optional[str] = None):
         self.torch_available = is_torch_available()
         if model_path is None:
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

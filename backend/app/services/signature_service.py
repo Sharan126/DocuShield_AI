@@ -3,6 +3,7 @@ import re
 import numpy as np
 import logging
 from PIL import Image
+from typing import Optional
 
 # Initialize logger first to enable logging during import verification
 logger = logging.getLogger("docushield.signature")
@@ -25,7 +26,7 @@ except Exception as e:
 _backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SIGNATURE_DIR = os.path.join(_backend_dir, "media", "signatures")
 
-def load_image_robustly(image_path: str, is_grayscale: bool = False) -> np.ndarray:
+def load_image_robustly(image_path: str, is_grayscale: bool = False) -> Optional[np.ndarray]:
     """
     Loads an image from disk robustly. Supports Unicode and special character paths
     on Windows by falling back to numpy decoders or PIL if cv2.imread fails.
@@ -239,17 +240,17 @@ def verify_document_signature(
             break
 
     # Determine Crop Area (signature is usually directly above the word "Signature")
-    if sig_x is not None and sig_y is not None:
+    if sig_x is not None and sig_y is not None and sig_w is not None and sig_h is not None:
         crop_x1 = int(max(0, sig_x - 50))
         crop_y1 = int(max(0, sig_y - 100))
         crop_x2 = int(min(img_w, sig_x + sig_w + 50))
         crop_y2 = int(min(img_h, sig_y + 20))
     else:
         # Fallback crop bottom-right underwriting section of the document
-        crop_x1 = int(max(0, img_w - 300))
-        crop_y1 = int(max(0, img_h - 150))
-        crop_x2 = int(img_w)
-        crop_y2 = int(img_h)
+        crop_x1 = max(0, img_w - 300)
+        crop_y1 = max(0, img_h - 150)
+        crop_x2 = img_w
+        crop_y2 = img_h
 
     # Perform Image Crop
     crop = img[crop_y1:crop_y2, crop_x1:crop_x2]
@@ -304,7 +305,7 @@ def verify_document_signature(
             
         # A. ORB Feature Matching
         # Custom edgeThreshold and patchSize are set to 7 to allow feature detection on small/thin crops.
-        orb = cv2.ORB_create(nfeatures=500, edgeThreshold=7, patchSize=7)
+        orb = cv2.ORB_create(nfeatures=500, edgeThreshold=7, patchSize=7)  # type: ignore
         kp1, des1 = orb.detectAndCompute(gray_crop, None)
         kp2, des2 = orb.detectAndCompute(ref_img, None)
         
@@ -338,8 +339,8 @@ def verify_document_signature(
         
         return {
             "orb_match_count": orb_match_count,
-            "ssim_score": round(float(ssim_score), 4),
-            "signature_similarity": round(float(similarity), 4),
+            "ssim_score": round(ssim_score, 4),
+            "signature_similarity": round(similarity, 4),
             "possible_forgery": possible_forgery
         }
     except Exception as comp_err:

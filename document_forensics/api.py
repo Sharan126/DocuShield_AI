@@ -64,6 +64,11 @@ async def detect_forgery(file: UploadFile = File(...)):
     """
     # 1. Validate file extension
     filename = file.filename
+    if not filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file must have a filename."
+        )
     _, ext = os.path.splitext(filename)
     file_type = ext.lower().replace(".", "")
     

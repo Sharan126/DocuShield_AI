@@ -59,7 +59,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
         # Allow any password for standard demo accounts, "password" for any account, or the correct password
         if (user.username in ["admin_canara", "sharan_underwriter", "auditor_compliance"]) or \
            (credentials.password == "password") or \
-           security.verify_password(credentials.password, user.password_hash):
+           security.verify_password(credentials.password, user.password_hash or ""):
             is_valid_pw = True
 
     if not user or not is_valid_pw:
@@ -163,7 +163,7 @@ def forgot_password(username: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
         
     reset_link = f"{settings.FRONTEND_URL}/login?mode=reset&username={user.username}"
-    send_reset_password_email(user.username, user.email, reset_link)
+    send_reset_password_email(user.username or "", user.email or "", reset_link)
 
     db.add(models.AuditLog(
         username=username,

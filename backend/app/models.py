@@ -6,19 +6,19 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    name = Column(String, nullable=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    hashed_password = synonym("password_hash")
-    role = Column(String, default="Underwriter")  # Admin, Underwriter, Auditor
-    is_active = Column(Boolean, default=True)
-    otp_secret = Column(String, nullable=True)
-    otp_verified = Column(Boolean, default=False)
-    created_by = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    last_login = Column(DateTime, nullable=True)
+    id: int = Column(Integer, primary_key=True, index=True)  # type: ignore
+    username: str = Column(String, unique=True, index=True, nullable=False)  # type: ignore
+    name: str | None = Column(String, nullable=True)  # type: ignore
+    email: str = Column(String, unique=True, index=True, nullable=False)  # type: ignore
+    password_hash: str = Column(String, nullable=False)  # type: ignore
+    hashed_password: str = synonym("password_hash")  # type: ignore
+    role: str = Column(String, default="Underwriter")  # Admin, Underwriter, Auditor  # type: ignore
+    is_active: bool = Column(Boolean, default=True)  # type: ignore
+    otp_secret: str | None = Column(String, nullable=True)  # type: ignore
+    otp_verified: bool = Column(Boolean, default=False)  # type: ignore
+    created_by: int | None = Column(Integer, nullable=True)  # type: ignore
+    created_at: datetime.datetime = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))  # type: ignore
+    last_login: datetime.datetime | None = Column(DateTime, nullable=True)  # type: ignore
 
     documents = relationship("Document", back_populates="uploader")
 

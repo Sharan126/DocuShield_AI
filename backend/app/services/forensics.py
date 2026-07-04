@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+from typing import Optional
 import numpy as np
 from PIL import Image, ImageChops
 from app.config import settings
@@ -48,7 +49,12 @@ def run_error_level_analysis(image_path: str, quality: int = 95, scale: int = 25
 
         # Get extreme values to determine dynamic scaling if needed
         extrema = diff.getextrema()
-        max_diff = max([ex[1] for ex in extrema])
+        max_diff = 0.0
+        if extrema:
+            if isinstance(extrema[0], tuple):
+                max_diff = float(max(ex[1] for ex in extrema))
+            else:
+                max_diff = float(extrema[1])
         if max_diff == 0:
             max_diff = 1
         
@@ -73,7 +79,7 @@ def run_error_level_analysis(image_path: str, quality: int = 95, scale: int = 25
         print(f"ELA generator warning: {str(e)}")
         return image_path
 
-def inspect_metadata(file_path: str, original_filename: str = None) -> dict:
+def inspect_metadata(file_path: str, original_filename: Optional[str] = None) -> dict:
     """
     Inspects document metadata for signs of editing software or altered timestamps.
     Returns status assessment and key details.
@@ -93,13 +99,13 @@ def inspect_metadata(file_path: str, original_filename: str = None) -> dict:
         creation_time = os.path.getctime(file_path)
         creation_timestamp = datetime.datetime.fromtimestamp(creation_time).isoformat()
     except Exception:
-        creation_timestamp = datetime.datetime.utcnow().isoformat()
+        creation_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
     try:
         mod_time = os.path.getmtime(file_path)
         modification_timestamp = datetime.datetime.fromtimestamp(mod_time).isoformat()
     except Exception:
-        modification_timestamp = datetime.datetime.utcnow().isoformat()
+        modification_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     exif_data = {}
     if file_type in ["PNG", "JPG", "JPEG", "TIFF", "TIF"]:
@@ -292,7 +298,7 @@ def calculate_ela_score(ela_image_path: str) -> float:
             mean_val = np.mean(arr)
             # Scale difference so that a noticeable diff yields higher score
             score = min(mean_val * 4.0, 100.0)
-            return round(float(score), 2)
+            return round(score, 2)
     except Exception as e:
         print(f"Error calculating ELA score: {e}")
         return 0.0

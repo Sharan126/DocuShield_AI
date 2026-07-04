@@ -3,6 +3,7 @@ import re
 import json
 import logging
 from PIL import Image
+from typing import Any
 
 logger = logging.getLogger("docushield.layoutlmv3")
 
@@ -423,7 +424,7 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
     wrapper.load_model()
     
     run_real_inference = False
-    if wrapper.loaded and len(scaled_blocks) > 0:
+    if wrapper.loaded and wrapper.processor is not None and wrapper.model is not None and len(scaled_blocks) > 0:
         try:
             words = [b["text"] for b in scaled_blocks]
             boxes = [b["box"] for b in scaled_blocks]
@@ -464,7 +465,7 @@ def extract_document_intelligence(image_path: str, text_blocks: list) -> dict:
     sorted_blocks = sorted(scaled_blocks, key=lambda b: (b["box"][1], b["box"][0]))
 
     # 5. Initialize extraction results
-    extracted = {
+    extracted: dict[str, dict[str, Any]] = {
         "applicant_name": {"value": "", "confidence": 0.0},
         "address": {"value": "", "confidence": 0.0},
         "income": {"value": 0.0, "confidence": 0.0},

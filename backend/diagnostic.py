@@ -162,7 +162,7 @@ def run_diagnostics():
         images, labels = images.to(device), labels.to(device)
         
         # Keep original weights
-        fc_weights_before = model.fc[0].weight.clone().detach()
+        fc_weights_before = model.fc[0].weight.clone().detach() # type: ignore
         
         model.train()
         optimizer.zero_grad()
@@ -171,7 +171,7 @@ def run_diagnostics():
         loss.backward()
         optimizer.step()
         
-        fc_weights_after = model.fc[0].weight.clone().detach()
+        fc_weights_after = model.fc[0].weight.clone().detach() # type: ignore
         
         weights_updated = not torch.equal(fc_weights_before, fc_weights_after)
         if weights_updated:

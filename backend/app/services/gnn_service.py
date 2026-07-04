@@ -2,6 +2,7 @@ import os
 import re
 import json
 import logging
+from typing import Optional, Any
 from sqlalchemy.orm import Session
 from app import models
 
@@ -204,6 +205,7 @@ def train_gnn_model(db: Session, epochs: int = 150) -> dict:
     graph_data = neo4j_service.get_graph_network(db)
     
     data, _ = build_pyg_data(graph_data)
+    assert data is not None
     
     FraudGCN = get_gnn_model_class()
     model = FraudGCN(in_channels=5, hidden_channels=16, out_channels=1)
@@ -257,11 +259,11 @@ def train_gnn_model(db: Session, epochs: int = 150) -> dict:
     }
 
 def predict_graph_risk(
-    doc_id: str = None,
-    applicant_name: str = None,
-    address: str = None,
-    phone_numbers: list = None,
-    db: Session = None
+    doc_id: Optional[str] = None,
+    applicant_name: Optional[str] = None,
+    address: Optional[str] = None,
+    phone_numbers: Optional[list] = None,
+    db: Optional[Session] = None
 ) -> dict:
     """
     Predicts graph-based fraud probability using the trained GCN model.
@@ -387,6 +389,7 @@ def predict_graph_risk(
             return {"gnn_fraud_probability": 0.0, "risk_level": "Low"}
             
         data, node_id_to_idx = build_pyg_data(graph_data)
+        assert data is not None
         
         # Load GNN Model
         FraudGCN = get_gnn_model_class()

@@ -3,6 +3,7 @@ os.environ['FLAGS_use_onednn'] = '0'
 
 import re
 import logging
+from typing import Optional
 
 logger = logging.getLogger("docushield.ocr")
 
@@ -508,7 +509,7 @@ def _extract_pan_number(text: str) -> str:
     return ""
 
 
-def extract_fields_from_text(text: str, doc_type: str = None) -> dict:
+def extract_fields_from_text(text: str, doc_type: Optional[str] = None) -> dict:
     """
     Parses key document fields from raw extracted text using document-type-aware
     multi-strategy extraction with regex patterns.
@@ -600,7 +601,7 @@ def get_ocr_engine():
     return _ocr_engine
 
 
-def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
+def analyze_ocr_layout(file_path: str, original_filename: Optional[str] = None) -> dict:
     """
     Extracts actual text from a PDF or image file.
     Utilizes PaddleOCR for images and PyPDF2 for PDF texts.
@@ -643,7 +644,7 @@ def analyze_ocr_layout(file_path: str, original_filename: str = None) -> dict:
                 ocr_status = "paddle_ocr_missing"
                 result = None
             else:
-                result = ocr_engine.ocr(file_path)
+                result = ocr_engine.ocr(file_path)  # type: ignore
 
             text_lines = []
             if result and len(result) > 0 and result[0] is not None:

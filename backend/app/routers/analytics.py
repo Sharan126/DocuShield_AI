@@ -37,9 +37,9 @@ def get_analytics_summary(
     ]
 
     # Adjust current month telemetry dynamically based on DB
-    monthly_trends[-1]["Clean"] += max(0, low_cases)
-    monthly_trends[-1]["Suspicious"] += max(0, medium_cases + high_cases)
-    monthly_trends[-1]["Critical"] += max(0, critical_cases)
+    monthly_trends[-1]["Clean"] = int(monthly_trends[-1]["Clean"]) + max(0, low_cases)
+    monthly_trends[-1]["Suspicious"] = int(monthly_trends[-1]["Suspicious"]) + max(0, medium_cases + high_cases)
+    monthly_trends[-1]["Critical"] = int(monthly_trends[-1]["Critical"]) + max(0, critical_cases)
 
     risk_distribution = [
         {"name": "Low Risk", "value": max(10, low_cases), "color": "#22C55E"},

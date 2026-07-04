@@ -4,7 +4,7 @@ import logging
 import hashlib
 import json
 import uuid
-from typing import List
+from typing import List, Dict, Any, cast
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -29,6 +29,12 @@ def upload_documents(
     results = []
     
     for upload_file in files:
+        if not upload_file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is missing a filename"
+            )
+            
         # Structured log: upload started
         logger.info(json.dumps({
             "event": "upload_started",
@@ -59,21 +65,21 @@ def upload_documents(
             reasons = []
             if existing_doc.explainable_ai_reasons:
                 try:
-                    reasons = json.loads(existing_doc.explainable_ai_reasons)
+                    reasons = json.loads(cast(str, existing_doc.explainable_ai_reasons))
                 except Exception:
                     reasons = []
             
             meta_json = {}
             if existing_doc.metadata_json:
                 try:
-                    meta_json = json.loads(existing_doc.metadata_json)
+                    meta_json = json.loads(cast(str, existing_doc.metadata_json))
                 except Exception:
                     meta_json = {}
                     
             layoutlm_intel = None
             if existing_doc.layoutlm_intelligence:
                 try:
-                    layoutlm_intel = json.loads(existing_doc.layoutlm_intelligence)
+                    layoutlm_intel = json.loads(cast(str, existing_doc.layoutlm_intelligence))
                 except Exception:
                     layoutlm_intel = None
 
@@ -129,6 +135,7 @@ def upload_documents(
         
         # 5. Process OCR text & OCR Font/Signature Analysis
         ocr_failed = False
+        ocr_report: dict[str, Any]
         try:
             ocr_report = ocr.analyze_ocr_layout(saved_path, original_filename=upload_file.filename)
         except Exception as e:
@@ -239,7 +246,7 @@ def upload_documents(
         )
 
         # 5e. Run Signature Verification Analysis
-        sig_report = {"signature_similarity": 1.0, "possible_forgery": False}
+        sig_report: dict[str, Any] = {"signature_similarity": 1.0, "possible_forgery": False}
         try:
             sig_report = signature_service.verify_document_signature(
                 saved_path, app_name, ocr_report.get("text_blocks", [])
@@ -254,7 +261,7 @@ def upload_documents(
                 )
 
         # 5f. Run GNN Syndicate Analysis
-        gnn_report = {"gnn_fraud_probability": 0.0, "risk_level": "Low"}
+        gnn_report: dict[str, Any] = {"gnn_fraud_probability": 0.0, "risk_level": "Low"}
         try:
             from app.services import gnn_service
             gnn_report = gnn_service.predict_graph_risk(
@@ -373,7 +380,7 @@ def upload_documents(
             "status": "processed",
             "ocr_text": doc_record.extracted_text,
             "metadata": meta_report,
-            "risk_score": float(fraud_score),
+            "risk_score": fraud_score,
             "risk_level": risk_report["risk_level"],
             "issues": risk_report["issues"],
             "layoutlm_intelligence": layoutlm_intel,
@@ -441,11 +448,11 @@ def get_document_details(
         "analysis_status": doc.analysis_status,
         
         # Decoded strings
-        "tamper_regions": json.loads(doc.tamper_regions or "[]"),
-        "explainable_ai_reasons": json.loads(doc.explainable_ai_reasons or "[]"),
-        "metadata_json": json.loads(doc.metadata_json or "{}"),
+        "tamper_regions": json.loads(cast(str, doc.tamper_regions or "[]")),
+        "explainable_ai_reasons": json.loads(cast(str, doc.explainable_ai_reasons or "[]")),
+        "metadata_json": json.loads(cast(str, doc.metadata_json or "{}")),
         "extracted_text": doc.extracted_text,
-        "layoutlm_intelligence": json.loads(doc.layoutlm_intelligence) if doc.layoutlm_intelligence else None,
+        "layoutlm_intelligence": json.loads(cast(str, doc.layoutlm_intelligence)) if doc.layoutlm_intelligence else None,
         "signature_similarity": doc.signature_similarity,
         "possible_forgery": doc.possible_forgery,
         "gnn_fraud_probability": doc.gnn_fraud_probability,
@@ -478,11 +485,11 @@ def cross_validate_documents(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to one or both documents")
 
     # Map records to validation lists using LayoutLMv3 intelligence if available, otherwise regex ocr
-    fields1_ocr = ocr.extract_fields_from_text(doc1.extracted_text or "")
-    fields2_ocr = ocr.extract_fields_from_text(doc2.extracted_text or "")
+    fields1_ocr = ocr.extract_fields_from_text(cast(str, doc1.extracted_text or ""))
+    fields2_ocr = ocr.extract_fields_from_text(cast(str, doc2.extracted_text or ""))
     
-    intel1 = json.loads(doc1.layoutlm_intelligence) if doc1.layoutlm_intelligence else {}
-    intel2 = json.loads(doc2.layoutlm_intelligence) if doc2.layoutlm_intelligence else {}
+    intel1 = json.loads(cast(str, doc1.layoutlm_intelligence)) if doc1.layoutlm_intelligence else {}
+    intel2 = json.loads(cast(str, doc2.layoutlm_intelligence)) if doc2.layoutlm_intelligence else {}
     
     doc1_payload = {
         "name": doc1.file_name,
