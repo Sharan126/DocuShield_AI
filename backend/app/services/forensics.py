@@ -131,19 +131,29 @@ def inspect_metadata(file_path: str, original_filename: Optional[str] = None) ->
     
     basename = (original_filename if original_filename else file_name).lower()
     
-    # 1. Simulating metadata analysis based on actual document properties
-    if basename.endswith(".pdf"):
-        software = "Adobe Acrobat 24.1"
-        warnings.append("Document modified after signature creation.")
-        warnings.append("Compression ratios imply Photoshop PDF export.")
-        status = "Alert"
-    elif "tampered" in basename or "fraud" in basename:
-        software = "Adobe Photoshop 2025 (Windows)"
-        warnings.append("Exif metadata contains Photoshop metadata tags.")
-        warnings.append("Creation date and Modification date have high time offset.")
-        status = "Tampered"
-
-    # 2. Real scanning of EXIF metadata for editing software keywords
+    # 1. Real metadata analysis for PDFs
+    pdf_info = {}
+    if file_type == "PDF":
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(file_path)
+            if reader.metadata:
+                pdf_info = reader.metadata
+                
+                # Extract software/producer
+                if '/Producer' in pdf_info:
+                    software = str(pdf_info['/Producer'])
+                elif '/Creator' in pdf_info:
+                    software = str(pdf_info['/Creator'])
+                
+                # Look for suspicious PDF producers
+                soft_lower = software.lower()
+                if any(s in soft_lower for s in ["photoshop", "gimp", "canva", "illustrator", "corel"]):
+                    status = "Tampered"
+                    warnings.append(f"Document created/edited using graphic design software: {software}")
+                
+        except Exception as e:
+            print(f"PDF metadata extraction error: {e}")
     exif_software = None
     if exif_data.get("Software"):
         exif_software = exif_data["Software"]
