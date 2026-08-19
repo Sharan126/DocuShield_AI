@@ -140,17 +140,17 @@ function ForensicScannerContent() {
     <div className="space-y-6">
       
       {/* Top Navbar Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 min-w-0">
+        <div className="flex items-center space-x-3 min-w-0 max-w-full">
           <Link 
             href="/dashboard"
-            className="p-2 border border-slate-800 rounded-lg text-slate-400 hover:text-white"
+            className="p-2 border border-slate-800 rounded-lg text-slate-400 hover:text-white shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-white">{details.file_name}</h2>
-            <p className="text-xs text-slate-500">Case file ID: DS-SCAN-00{details.id} • Forensic Underwriting Verification Report</p>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-extrabold tracking-tight text-white truncate">{details.file_name}</h2>
+            <p className="text-[10px] sm:text-xs text-slate-500 truncate">Case ID: DS-SCAN-00{details.id} • Forensic Underwriting Verification Report</p>
           </div>
         </div>
         

@@ -57,17 +57,17 @@ export default function LandingPage() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/10 rounded-full blur-[120px] pointer-events-none z-0" />
 
       {/* HEADER / TOP NAVBAR */}
-      <header className="relative z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-cyan-950 border border-accent/30 rounded-lg shadow-cyber">
-              <ShieldAlert className="w-6 h-6 text-accent animate-pulse" />
+            <div className="p-2 sm:p-2.5 bg-cyan-950 border border-accent/30 rounded-lg shadow-cyber shrink-0">
+              <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 text-accent animate-pulse" />
             </div>
             <div>
-              <span className="text-xl font-bold tracking-wider font-sans text-white">
+              <span className="text-lg sm:text-xl font-bold tracking-wider font-sans text-white">
                 DOCUSHIELD <span className="text-accent text-sm font-light">AI</span>
               </span>
-              <p className="text-[9px] text-slate-400 tracking-widest uppercase">Underwriting Guard</p>
+              <p className="text-[8px] sm:text-[9px] text-slate-400 tracking-widest uppercase">Underwriting Guard</p>
             </div>
           </div>
 
@@ -96,42 +96,65 @@ export default function LandingPage() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-white">
-            {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <button 
+            onClick={() => setMenuOpen(!menuOpen)} 
+            aria-label="Toggle Navigation Menu"
+            className="md:hidden p-2 rounded-lg border border-slate-800 bg-slate-900/80 text-white hover:text-accent transition-colors"
+          >
+            {menuOpen ? <X className="w-6 h-6 text-accent" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
-        {/* Mobile Dropdown */}
+        {/* Mobile Dropdown Menu with Full Solid Backdrop & High Z-Index */}
         {menuOpen && (
-          <div className="absolute top-20 left-0 w-full bg-slate-950 border-b border-slate-800 px-6 py-8 flex flex-col space-y-6 z-50 md:hidden">
-            <a href="#problem" onClick={() => setMenuOpen(false)} className="text-lg text-slate-300 hover:text-accent">Risk Index</a>
-            <a href="#features" onClick={() => setMenuOpen(false)} className="text-lg text-slate-300 hover:text-accent">Core Intelligence</a>
-            <a href="#workflow" onClick={() => setMenuOpen(false)} className="text-lg text-slate-300 hover:text-accent">Workflow</a>
-            <a href="#security" onClick={() => setMenuOpen(false)} className="text-lg text-slate-300 hover:text-accent">Compliance</a>
-            <Link href="/login" className="py-3 bg-accent text-center text-slate-950 font-bold rounded-lg">Start Analysis</Link>
+          <div className="fixed inset-x-0 top-20 bottom-0 bg-slate-950/98 backdrop-blur-2xl border-b border-slate-800 px-6 py-6 flex flex-col justify-between z-50 md:hidden overflow-y-auto shadow-2xl">
+            <div className="flex flex-col space-y-3">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 pb-2 border-b border-slate-800/80">Navigation Menu</span>
+              <a href="#problem" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Risk Index</a>
+              <a href="#features" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Core Intelligence</a>
+              <a href="#workflow" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Workflow</a>
+              <a href="#security" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Compliance</a>
+              <a href="#faq" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5">Security FAQ</a>
+            </div>
+            
+            <div className="flex flex-col space-y-3 pt-6 border-t border-slate-800">
+              <button 
+                onClick={() => { setMenuOpen(false); setShowDemoModal(true); }}
+                className="w-full py-3 rounded-lg border border-slate-700 text-sm font-semibold text-slate-200 hover:bg-slate-900 text-center"
+              >
+                Request Demo
+              </button>
+              <Link 
+                href="/login" 
+                onClick={() => setMenuOpen(false)} 
+                className="w-full py-3.5 bg-accent hover:bg-cyan-400 text-center text-slate-950 font-bold rounded-lg text-sm shadow-cyber"
+              >
+                Start Analysis Session
+              </Link>
+            </div>
           </div>
         )}
       </header>
 
       {/* HERO SECTION */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-24 text-center">
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-accent/20 text-xs text-accent mb-8 shadow-cyber">
-          <Award className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="font-semibold tracking-wider uppercase font-sans">Next-Gen Underwriting Security Platform</span>
+      <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 text-center">
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-accent/20 text-[11px] sm:text-xs text-accent mb-6 sm:mb-8 shadow-cyber max-w-full">
+          <Award className="w-3.5 h-3.5 shrink-0 animate-spin" style={{ animationDuration: '6s' }} />
+          <span className="font-semibold tracking-wider uppercase font-sans truncate">Next-Gen Underwriting Security Platform</span>
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 font-sans max-w-4xl mx-auto leading-[1.1]">
-          AI-Powered Document <br />
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-6 font-sans max-w-4xl mx-auto leading-tight sm:leading-tight md:leading-[1.1] px-2">
+          AI-Powered Document <br className="hidden sm:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-indigo-300 to-white glow-cyan">
             Fraud & Forgery Detection
           </span>
         </h1>
 
-        <p className="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto font-sans font-light leading-relaxed">
+        <p className="text-sm sm:text-lg md:text-xl text-slate-400 mb-8 sm:mb-10 max-w-2xl mx-auto font-sans font-light leading-relaxed px-2">
           Detect document tampering, AI-generated forgery, metadata anomalies, and loan underwriting fraud in real time before it hits your ledger.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-md sm:max-w-none mx-auto">
           <Link 
             href="/login"
             className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-cyan-400 text-slate-950 rounded-xl text-base font-bold shadow-cyber hover:shadow-cyberGlow flex items-center justify-center space-x-2.5 transition-all duration-300 group"
@@ -148,57 +171,57 @@ export default function LandingPage() {
         </div>
 
         {/* Dynamic App Preview Mockup */}
-        <div className="mt-20 max-w-5xl mx-auto relative group">
+        <div className="mt-14 sm:mt-20 max-w-5xl mx-auto relative group">
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10" />
           <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-accent/20 to-indigo-500/20 blur-xl opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
           
           <div className="relative border border-slate-800 rounded-2xl bg-slate-900/90 shadow-2xl overflow-hidden glass-panel">
-            <div className="h-11 border-b border-slate-800 bg-slate-950/80 px-6 flex items-center space-x-2">
+            <div className="h-11 border-b border-slate-800 bg-slate-950/80 px-4 sm:px-6 flex items-center space-x-2">
               <span className="w-3 h-3 rounded-full bg-red-500/80" />
               <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
               <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-              <span className="text-xs text-slate-500 ml-4 font-mono">docushield.security.canarabank.in/scanner</span>
+              <span className="text-[11px] sm:text-xs text-slate-500 ml-2 sm:ml-4 font-mono truncate">docushield.security.canarabank.in/scanner</span>
             </div>
             
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+            <div className="p-4 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 text-left">
               {/* Fake visual ELA panel */}
-              <div className="border border-red-500/30 bg-slate-950 p-6 rounded-xl relative overflow-hidden scanline min-h-[250px]">
-                <span className="absolute top-4 right-4 bg-red-500/10 border border-red-500/40 text-red-400 text-xs px-2.5 py-1 rounded font-mono uppercase tracking-widest">
+              <div className="border border-red-500/30 bg-slate-950 p-4 sm:p-6 rounded-xl relative overflow-hidden scanline min-h-[220px] sm:min-h-[250px]">
+                <span className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-500/10 border border-red-500/40 text-red-400 text-[10px] sm:text-xs px-2.5 py-1 rounded font-mono uppercase tracking-widest">
                   CRITICAL FRAUD
                 </span>
-                <p className="text-[10px] text-slate-500 font-mono tracking-wider mb-2">FORENSIC ELA HEATMAP VIEW</p>
-                <div className="h-40 flex flex-col justify-center items-center border border-dashed border-slate-800 rounded-lg relative bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:16px_16px]">
-                  <ShieldAlert className="w-12 h-12 text-red-500 animate-pulse mb-3" />
-                  <p className="text-sm font-semibold text-slate-300">Monthly Income Box Tampered</p>
-                  <p className="text-[11px] text-slate-500 font-mono">Grid Quality Discrepancy Multiplier: 25.0x</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-wider mb-2">FORENSIC ELA HEATMAP VIEW</p>
+                <div className="h-32 sm:h-40 flex flex-col justify-center items-center border border-dashed border-slate-800 rounded-lg relative bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:16px_16px]">
+                  <ShieldAlert className="w-10 h-10 sm:w-12 sm:h-12 text-red-500 animate-pulse mb-2 sm:mb-3" />
+                  <p className="text-xs sm:text-sm font-semibold text-slate-300 text-center px-2">Monthly Income Box Tampered</p>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-mono text-center">Discrepancy Multiplier: 25.0x</p>
                 </div>
               </div>
               
               {/* Fake visual stats */}
-              <div className="flex flex-col justify-between">
+              <div className="flex flex-col justify-between space-y-6 md:space-y-0">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Loan Verification Forensic Scan</h3>
-                  <p className="text-sm text-slate-400 mb-6">Sunita_Kumar_SalarySlip_Tampered.png</p>
+                  <h3 className="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">Loan Verification Forensic Scan</h3>
+                  <p className="text-xs sm:text-sm text-slate-400 mb-4 sm:mb-6 truncate">Sunita_Kumar_SalarySlip_Tampered.png</p>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
                     <div className="flex justify-between border-b border-slate-800 pb-2">
-                      <span className="text-sm text-slate-500">Tamper Risk Rating</span>
-                      <span className="text-sm text-red-400 font-bold uppercase glow-red">92.6% (CRITICAL)</span>
+                      <span className="text-slate-500">Tamper Risk Rating</span>
+                      <span className="text-red-400 font-bold uppercase glow-red">92.6% (CRITICAL)</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-800 pb-2">
-                      <span className="text-sm text-slate-500">EXIF Software Footprint</span>
-                      <span className="text-sm text-yellow-400 font-medium">Adobe Photoshop 2025</span>
+                      <span className="text-slate-500">EXIF Software Footprint</span>
+                      <span className="text-yellow-400 font-medium">Adobe Photoshop 2025</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-800 pb-2">
-                      <span className="text-sm text-slate-500">Font Integrity Spacing</span>
-                      <span className="text-sm text-red-400 font-medium">Alert: Mismatch Patched Box</span>
+                      <span className="text-slate-500">Font Integrity Spacing</span>
+                      <span className="text-red-400 font-medium">Alert: Mismatch Patched Box</span>
                     </div>
                   </div>
                 </div>
                 
                 <Link 
                   href="/login"
-                  className="w-full text-center py-3 bg-slate-800 hover:bg-slate-700 text-accent font-semibold rounded-lg text-sm border border-accent/20 transition-all"
+                  className="w-full text-center py-3 bg-slate-800 hover:bg-slate-700 text-accent font-semibold rounded-lg text-xs sm:text-sm border border-accent/20 transition-all"
                 >
                   Inspect Case Record
                 </Link>
@@ -209,7 +232,7 @@ export default function LandingPage() {
       </section>
 
       {/* STATISTICS CARDS */}
-      <section id="problem" className="relative z-10 max-w-7xl mx-auto px-6 py-12 border-t border-slate-900 bg-slate-950/40">
+      <section id="problem" className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-slate-900 bg-slate-950/40">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {statistics.map((stat, i) => {
             const Icon = stat.icon;

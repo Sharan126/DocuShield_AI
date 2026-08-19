@@ -24,7 +24,8 @@ import {
   MessageSquareCode,
   X,
   Send,
-  Sparkles
+  Sparkles,
+  Menu
 } from "lucide-react";
 import { useStore } from "@/store";
 import { useAuthStore } from "@/store/authStore";
@@ -47,7 +48,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   } = useStore();
 
   const [mounted, setMounted] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -68,6 +70,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push("/login");
     }
   }, [isLoggedIn, router, mounted]);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
 
   // RBAC Page Protection & Redirects
   useEffect(() => {
@@ -105,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!mounted || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-sm font-mono text-slate-500">Checking credentials validation clearances...</p>
+        <p className="text-xs font-mono text-slate-500">Checking credentials validation clearances...</p>
       </div>
     );
   }
@@ -117,7 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: { EN: "Fraud Scanner", HI: "धोखाधड़ी स्कैनर", KN: "ವಂಚನೆ ಸ್ಕ್ಯಾನರ್" }, path: "/dashboard/scanner", icon: ScanLine, roles: ["Admin", "Underwriter"] },
     { name: { EN: "Heatmap Viewer", HI: "हीटमैप व्यूअर", KN: "ಹೀಟ್ಮ್ಯಾಪ್ ವೀಕ್ಷಕ" }, path: "/dashboard/heatmap", icon: Layers, roles: ["Admin", "Underwriter"] },
     { name: { EN: "Cross Validation", HI: "क्रॉस सत्यापन", KN: "ಕ್ರಾಸ್ ಸಿಂಧುತ್ವ" }, path: "/dashboard/validation", icon: FileCheck, roles: ["Admin", "Underwriter"] },
-    { name: { EN: "Risk Analytics", HI: "जोखिम विश्लेषण", KN: "ಅಪಾಯ ವಿಶ್ಲೇषಣೆ" }, path: "/dashboard/analytics", icon: PieChart, roles: ["Admin", "Underwriter"] },
+    { name: { EN: "Risk Analytics", HI: "जोखिम विश्लेषण", KN: "ಅಪಾಯ ವಿಶ್ಲೇಷಣೆ" }, path: "/dashboard/analytics", icon: PieChart, roles: ["Admin", "Underwriter"] },
     { name: { EN: "Graph Intelligence", HI: "ग्राफ इंटेलिजेंस", KN: "ಗ್ರಾಫ್ ಇಂಟೆಲಿಜೆನ್ಸ್" }, path: "/dashboard/graph", icon: Network, roles: ["Admin", "Underwriter"] },
     { name: { EN: "Audit Logs", HI: "ऑडिट लॉग", KN: "ಲೆಕ್ಕ ಪರಿಶೋಧನೆ" }, path: "/dashboard/audits", icon: History, roles: ["Admin", "Auditor"] },
   ];
@@ -171,30 +178,109 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className={`min-h-screen ${theme === "light" ? "bg-slate-50 text-slate-900" : "bg-slate-950 text-slate-100"} flex relative font-sans transition-colors duration-200`}>
+    <div className={`min-h-screen ${theme === "light" ? "bg-slate-50 text-slate-900" : "bg-slate-950 text-slate-100"} flex relative font-sans transition-colors duration-200 overflow-x-hidden`}>
       
-      {/* SIDEBAR NAVIGATION */}
-      <aside className={`shrink-0 border-r border-slate-800 ${theme === "light" ? "bg-white" : "bg-slate-900"} h-screen sticky top-0 transition-all duration-300 z-30 flex flex-col justify-between ${sidebarOpen ? "w-64" : "w-20"}`}>
+      {/* MOBILE DRAWER BACKDROP */}
+      {mobileSidebarOpen && (
+        <div 
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
+        />
+      )}
+
+      {/* MOBILE SIDEBAR DRAWER (Slide-in on mobile) */}
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-slate-900 border-r border-slate-800 z-50 flex flex-col justify-between shadow-2xl transition-transform duration-300 transform lg:hidden ${
+        mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <div className="overflow-y-auto flex-1">
+          {/* Logo Brand + Close Button */}
+          <div className="h-20 border-b border-slate-800 flex items-center justify-between px-5">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-cyan-950/60 border border-accent/20 rounded-xl shadow-cyber">
+                <ShieldAlert className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <span className="font-extrabold tracking-wider text-sm block text-white">DOCUSHIELD</span>
+                <span className="text-[9px] text-slate-500 tracking-widest uppercase">Canara Sec Ops</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close Sidebar"
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* User badge */}
+          <div className="m-4 p-4 border border-slate-800 rounded-xl bg-slate-950/60 backdrop-blur-md">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Active Credentials</p>
+            <h4 className="text-sm font-bold text-slate-200 truncate">{user?.name || user?.username}</h4>
+            {user?.name && <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{user.username}</p>}
+            <span className="inline-block mt-2 text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent uppercase">
+              {user?.role}
+            </span>
+          </div>
+
+          {/* Menu links */}
+          <nav className="mt-4 px-3 space-y-1">
+            {menuItems.map((item, i) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.path;
+              return (
+                <Link
+                  key={i}
+                  href={item.path}
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                    isActive 
+                      ? "bg-accent text-slate-950 font-bold shadow-cyber" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                  }`}
+                >
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span>{item.name[activeLang]}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Sidebar Footer Logout */}
+        <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+          <button
+            onClick={() => { clearAuth(); router.push("/login"); }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-xs font-semibold tracking-wide transition-all"
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            <span>Logout Session</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* DESKTOP SIDEBAR NAVIGATION (Visible on lg screens) */}
+      <aside className={`hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-screen shrink-0 border-r border-slate-800 ${theme === "light" ? "bg-white" : "bg-slate-900"} transition-all duration-300 z-30 justify-between ${desktopSidebarOpen ? "w-64" : "w-20"}`}>
         <div>
           {/* Logo Brand */}
           <div className="h-20 border-b border-slate-800 flex items-center px-5 space-x-3">
-            <div className="p-2 bg-cyan-950/60 border border-accent/20 rounded-xl shadow-cyber">
+            <div className="p-2 bg-cyan-950/60 border border-accent/20 rounded-xl shadow-cyber shrink-0">
               <ShieldAlert className="w-5 h-5 text-accent" />
             </div>
-            {sidebarOpen && (
-              <div>
-                <span className="font-extrabold tracking-wider text-sm block">DOCUSHIELD</span>
-                <span className="text-[9px] text-slate-500 tracking-widest uppercase">Canara Sec Ops</span>
+            {desktopSidebarOpen && (
+              <div className="overflow-hidden">
+                <span className="font-extrabold tracking-wider text-sm block truncate">DOCUSHIELD</span>
+                <span className="text-[9px] text-slate-500 tracking-widest uppercase truncate block">Canara Sec Ops</span>
               </div>
             )}
           </div>
 
           {/* User badge */}
-          {sidebarOpen && (
+          {desktopSidebarOpen && (
             <div className="m-4 p-4 border border-slate-800 rounded-xl bg-slate-950/40 backdrop-blur-md">
               <p className="text-[10px] text-slate-500 uppercase tracking-wider">Active Credentials</p>
               <h4 className="text-sm font-bold text-slate-200 truncate">{user?.name || user?.username}</h4>
-              {user?.name && <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{user.username}</p>}
+              {user?.name && <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">@{user.username}</p>}
               <span className="inline-block mt-2 text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent uppercase">
                 {user?.role}
               </span>
@@ -210,6 +296,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   key={i}
                   href={item.path}
+                  title={item.name[activeLang]}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                     isActive 
                       ? "bg-accent text-slate-950 font-bold shadow-cyber hover:bg-cyan-400" 
@@ -217,7 +304,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }`}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
-                  {sidebarOpen && <span>{item.name[activeLang]}</span>}
+                  {desktopSidebarOpen && <span className="truncate">{item.name[activeLang]}</span>}
                 </Link>
               );
             })}
@@ -228,29 +315,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-3 border-t border-slate-800">
           <button
             onClick={() => { clearAuth(); router.push("/login"); }}
+            title="Logout Session"
             className="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-xs font-semibold tracking-wide transition-all"
           >
             <LogOut className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Logout Session</span>}
+            {desktopSidebarOpen && <span>Logout Session</span>}
           </button>
         </div>
       </aside>
 
       {/* CORE WORKSPACE */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 w-full overflow-x-hidden">
         
         {/* TOP NAVBAR */}
-        <header className={`h-20 border-b border-slate-800 ${theme === "light" ? "bg-white" : "bg-slate-900/80"} backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20`}>
+        <header className={`h-16 sm:h-20 border-b border-slate-800 ${theme === "light" ? "bg-white" : "bg-slate-900/80"} backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20`}>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            {/* Mobile Hamburger Toggle Button */}
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 border border-slate-800 rounded-lg text-slate-400 hover:text-white"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open Navigation Drawer"
+              className="lg:hidden p-2 border border-slate-800 rounded-lg text-slate-300 hover:text-accent hover:bg-slate-800/60 transition-colors"
             >
-              <ShieldAlert className="w-5 h-5" />
+              <Menu className="w-5 h-5" />
             </button>
-            <div className="hidden sm:flex items-center space-x-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 w-64">
-              <Search className="w-4 h-4 text-slate-500" />
+
+            {/* Desktop Collapse/Expand Toggle Button */}
+            <button
+              onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+              aria-label="Toggle Desktop Sidebar"
+              className="hidden lg:block p-2 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            >
+              <ShieldAlert className="w-5 h-5 text-accent" />
+            </button>
+
+            {/* Brand title on mobile header */}
+            <div className="flex lg:hidden items-center space-x-2">
+              <span className="font-extrabold tracking-wider text-xs sm:text-sm text-white">DOCUSHIELD <span className="text-accent text-[10px]">AI</span></span>
+            </div>
+
+            <div className="hidden md:flex items-center space-x-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 w-48 sm:w-64">
+              <Search className="w-4 h-4 text-slate-500 shrink-0" />
               <input 
                 type="text" 
                 placeholder="Search case, applicant name..." 
@@ -259,21 +364,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Real-time notification Bell */}
             <div className="relative">
               <button
                 onClick={() => { setNotifOpen(!notifOpen); setLangOpen(false); }}
-                className="p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white relative bg-slate-950/20"
+                className="p-2 sm:p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white relative bg-slate-950/20"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {notifications.some(n => !n.read) && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-slate-950 animate-pulse" />
+                  <span className="absolute top-1 right-1 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-500 border border-slate-950 animate-pulse" />
                 )}
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-slate-900 border border-slate-850 rounded-xl shadow-2xl p-4 z-50 text-left glass-panel">
+                <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto top-16 sm:top-auto sm:right-0 sm:mt-3 w-auto sm:w-80 bg-slate-900 border border-slate-850 rounded-xl shadow-2xl p-4 z-50 text-left glass-panel">
                   <div className="flex justify-between items-center pb-3 border-b border-slate-800 mb-3">
                     <h4 className="text-sm font-bold text-white">Underwrite System Alerts</h4>
                     <button onClick={markAllAsRead} className="text-[10px] text-accent hover:underline">Mark all read</button>
@@ -315,10 +420,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="relative">
               <button
                 onClick={() => { setLangOpen(!langOpen); setNotifOpen(false); }}
-                className="p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white flex items-center space-x-1.5 bg-slate-950/20"
+                className="p-2 sm:p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white flex items-center space-x-1 sm:space-x-1.5 bg-slate-950/20"
               >
-                <Globe className="w-5 h-5" />
-                <span className="text-xs font-bold font-mono">{activeLang}</span>
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-[11px] sm:text-xs font-bold font-mono">{activeLang}</span>
               </button>
 
               {langOpen && (
@@ -339,47 +444,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Light/Dark Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white bg-slate-950/20"
+              aria-label="Toggle Theme"
+              className="p-2 sm:p-2.5 border border-slate-800 rounded-lg text-slate-400 hover:text-white bg-slate-950/20"
             >
-              {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              {theme === "light" ? <Moon className="w-4 h-4 sm:w-5 sm:h-5" /> : <Sun className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
 
         </header>
 
         {/* WORKSPACE PAGES VIEWS */}
-        <main className="flex-1 p-6 relative">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 relative min-w-0 w-full overflow-x-hidden">
           {children}
         </main>
       </div>
 
       {/* FLOATING AI ASSISTANT PANEL */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
         {!chatOpen ? (
           <button
             onClick={() => setChatOpen(true)}
-            className="p-4 bg-accent hover:bg-cyan-400 text-slate-950 rounded-full shadow-cyberGlow flex items-center justify-center transition-all duration-300 hover:scale-110"
+            aria-label="Open AI Assistant"
+            className="p-3.5 sm:p-4 bg-accent hover:bg-cyan-400 text-slate-950 rounded-full shadow-cyberGlow flex items-center justify-center transition-all duration-300 hover:scale-110"
           >
-            <MessageSquareCode className="w-6 h-6 animate-pulse" />
+            <MessageSquareCode className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
           </button>
         ) : (
-          <div className="w-80 sm:w-96 h-[450px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden glass-panel flex flex-col justify-between">
+          <div className="w-[calc(100vw-2rem)] sm:w-96 max-w-md h-[420px] sm:h-[450px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden glass-panel flex flex-col justify-between">
             {/* Chat header */}
-            <div className="p-4 bg-slate-950 border-b border-slate-850 flex items-center justify-between">
+            <div className="p-3.5 sm:p-4 bg-slate-950 border-b border-slate-850 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-accent animate-spin" style={{ animationDuration: '4s' }} />
-                <span className="text-sm font-bold text-white">DocuShield AI Underwriter Chat</span>
+                <span className="text-xs sm:text-sm font-bold text-white truncate">DocuShield AI Underwriter Chat</span>
               </div>
-              <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Chat list */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 font-sans text-xs">
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3 font-sans text-xs">
               {chatHistory.map((chat, idx) => (
                 <div key={idx} className={`flex ${chat.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`p-3 rounded-xl max-w-[80%] leading-relaxed ${
+                  <div className={`p-2.5 sm:p-3 rounded-xl max-w-[85%] sm:max-w-[80%] leading-relaxed ${
                     chat.role === "user" ? "bg-accent text-slate-950 font-medium" : "bg-slate-950 text-slate-300 border border-slate-800"
                   }`}>
                     {chat.text}
@@ -394,10 +501,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask RBI guides, ELA, Photoshop alerts..."
-                className="flex-1 bg-slate-900 border border-slate-800 focus:border-accent outline-none text-xs rounded-lg px-3 text-white placeholder-slate-500"
+                placeholder="Ask RBI guides, ELA, alerts..."
+                className="flex-1 bg-slate-900 border border-slate-800 focus:border-accent outline-none text-xs rounded-lg px-3 py-2 text-white placeholder-slate-500"
               />
-              <button type="submit" className="p-2.5 bg-accent hover:bg-cyan-400 text-slate-950 rounded-lg shrink-0">
+              <button type="submit" className="p-2 sm:p-2.5 bg-accent hover:bg-cyan-400 text-slate-950 rounded-lg shrink-0">
                 <Send className="w-4 h-4" />
               </button>
             </form>

@@ -100,7 +100,7 @@ export default function DashboardHome() {
       </div>
 
       {/* STATS HIGHLIGHTS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         
         {/* Total Scanned */}
         <div className="p-5 border border-slate-800 rounded-xl bg-slate-900/40 backdrop-blur-md relative h-full flex flex-col justify-between">
