@@ -1,0 +1,23 @@
+services:
+  # DocuShield AI Backend API Service
+  - type: web
+    name: docushield-ai-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_EXPIRE_MINUTES
+        value: 1440
+      - key: DISABLE_HEAVY_AI
+        value: "true"
+      - key: SEED_DATABASE
+        value: "true"
+      - key: FRONTEND_URL
+        value: "https://*.vercel.app,http://localhost:3000"

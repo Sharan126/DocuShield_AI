@@ -46,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     clearNotifications 
   } = useStore();
 
+  const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notifOpen, setNotifOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -57,12 +58,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { role: "assistant", text: "Hello underwriter. I am DocuShield AI Assistant. Ask me anything about document tampers, RBI Sections, or fraud ring patterns." }
   ]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Auth Protection - Redirect if not logged in
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (mounted && !isLoggedIn) {
       router.push("/login");
     }
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, router, mounted]);
 
   // RBAC Page Protection & Redirects
   useEffect(() => {
@@ -97,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoggedIn, user, pathname, router]);
 
-  if (!isLoggedIn) {
+  if (!mounted || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <p className="text-sm font-mono text-slate-500">Checking credentials validation clearances...</p>

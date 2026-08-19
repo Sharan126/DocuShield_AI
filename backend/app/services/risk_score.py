@@ -12,6 +12,7 @@ import os
 import re
 from datetime import datetime
 from PyPDF2 import PdfReader
+from typing import Optional, Dict, Any
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PER-DOCUMENT-TYPE REQUIRED FIELDS
@@ -160,7 +161,7 @@ def _check_extracted_field(extracted_fields: dict, field_name: str) -> bool:
 def calculate_risk_score(
     meta_report: dict,
     ocr_report: dict,
-    ml_prediction: dict = None,
+    ml_prediction: Optional[Dict[str, Any]] = None,
     ocr_failed: bool = False,
     missing_fields: bool = False,
     validation_mismatch: bool = False,
@@ -171,10 +172,10 @@ def calculate_risk_score(
     gnn_fraud_probability: float = 0.0,
     gnn_risk_level: str = "Low",
     ela_score: float = 0.0,
-    compress_report: dict = None,
-    quality_report: dict = None,
+    compress_report: Optional[Dict[str, Any]] = None,
+    quality_report: Optional[Dict[str, Any]] = None,
     document_type: str = "UNKNOWN",
-    extracted_fields: dict = None
+    extracted_fields: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
     Computes a fraud risk score (0-100) and risk level classification.
@@ -183,7 +184,12 @@ def calculate_risk_score(
     import logging
     logger = logging.getLogger("docushield.risk_score")
 
-    issues = []
+    issues = [
+        "✓ PDF loaded successfully",
+        "✓ Metadata extracted",
+        "✓ Fonts analyzed",
+        "✓ Hash generated"
+    ]
 
     # ─────────────────────────────────────────────────────────────────────────
     # 1. Metadata Analysis Recalibration
@@ -267,14 +273,14 @@ def calculate_risk_score(
     metadata_score = 0
     if status == "Tampered" or is_editing_tool or has_photoshop_warning:
         metadata_score = 35
-        issues.append("Metadata anomaly: document metadata indicates editing software or modification (Photoshop/Canva/etc.).")
+        issues.append("⚠ Metadata modified: document metadata indicates editing software or modification (Photoshop/Canva/etc.).")
     elif has_time_offset_warning:
         metadata_score = 10
-        issues.append("Metadata anomaly: creation date and modification date have high time offset.")
+        issues.append("⚠ Metadata anomaly: creation date and modification date have high time offset.")
     elif filtered_warnings:
         metadata_score = 5
         for warning in filtered_warnings:
-            issues.append(f"Metadata warning: {warning}")
+            issues.append(f"⚠ Metadata warning: {warning}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # 2. OCR Extraction & Missing Fields Calibration
@@ -284,13 +290,16 @@ def calculate_risk_score(
 
     if ocr_failed:
         ocr_score += 5
-        issues.append("OCR text extraction failed (minor quality or formatting warning).")
+        issues.append("⚠ OCR text extraction failed (minor quality or formatting warning).")
     else:
         text_blocks = ocr_report.get("text_blocks", []) if ocr_report else []
         if not text_blocks:
             ocr_score += 5
-            issues.append("OCR text extraction: no text blocks detected.")
+            issues.append("⚠ OCR text extraction: no text blocks detected.")
             ocr_failed = True
+        else:
+            words_count = len(" ".join([tb.get("text", "") for tb in text_blocks]).split())
+            issues.append(f"✓ OCR extracted {words_count} words")
 
     if not ocr_failed:
         type_config = REQUIRED_FIELDS_BY_TYPE.get(document_type, REQUIRED_FIELDS_BY_TYPE["UNKNOWN"])
@@ -327,13 +336,13 @@ def calculate_risk_score(
 
     if has_font_variance:
         ocr_score += 10
-        issues.append("Font continuity analysis: spacing or style variance detected (suggests text alteration).")
+        issues.append("⚠ Font mismatch detected (suggests text alteration).")
     if has_sig_anomaly:
         ocr_score += 10
-        issues.append("Signature continuity analysis: layout or metadata variance detected.")
+        issues.append("⚠ Signature continuity analysis: layout or metadata variance detected.")
     if validation_mismatch:
         ocr_score += 10
-        issues.append("Cross-document validation mismatch: mismatch in extracted data fields.")
+        issues.append("⚠ Cross-document validation mismatch: mismatch in extracted data fields.")
 
     # Cap total OCR contribution at 30 to avoid accumulation over-penalization
     ocr_score = min(ocr_score, 30)
@@ -350,7 +359,7 @@ def calculate_risk_score(
             signature_score = 15
         else:
             signature_score = 30
-        issues.append(f"Possible signature forgery detected. Signature similarity score of {signature_similarity * 100:.1f}% is below threshold.")
+        issues.append(f"⚠ Signature invalid. Signature similarity score of {signature_similarity * 100:.1f}% is below threshold.")
 
     # ─────────────────────────────────────────────────────────────────────────
     # 5. ELA (Error Level Analysis) Discrepancy

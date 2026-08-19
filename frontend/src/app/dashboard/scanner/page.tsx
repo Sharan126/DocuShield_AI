@@ -55,42 +55,8 @@ function ForensicScannerContent() {
         const data = await response.json();
         setDetails(data);
       } catch (err: any) {
-        console.warn("FastAPI offline. Hydrating fallback seeded details.");
-        // Hydrate seeded Critical Risk salary slip mock
-        setDetails({
-          id: 2,
-          file_name: "Sunita_Kumar_SalarySlip_Tampered.png",
-          file_type: "PNG",
-          fraud_score: 92.6,
-          confidence_score: 87.2,
-          risk_level: "Critical",
-          metadata_status: "Tampered",
-          font_status: "Alert",
-          signature_status: "Alert",
-          compression_status: "Alert",
-          uploaded_at: "2026-05-29T14:10:12",
-          tamper_regions: [
-            {"id": 1, "x": 75, "y": 295, "w": 250, "h": 30, "risk": "High", "label": "Income Figure Patched (Font mismatch)"},
-            {"id": 2, "x": 380, "y": 680, "w": 120, "h": 50, "risk": "Suspicious", "label": "Signature Block Compression Alteration"}
-          ],
-          explainable_ai_reasons: [
-            "EXIF metadata reports document was edited in Adobe Photoshop on 2026-05-28.",
-            "Significant font variance found inside 'Monthly Income' block (Times New Roman overlaid on Arial layout).",
-            "Error Level Analysis (ELA) compression discrepancy detected in the signature block (suggests copy-paste).",
-            "Name spelling deviations identified during Aadhaar ID cross-validation."
-          ],
-          metadata_json: {
-            "software": "Adobe Photoshop 2025 (Windows)",
-            "created_date": "2025-11-10 16:30:20",
-            "modified_date": "2026-05-28 23:45:11",
-            "status": "Tampered",
-            "warnings": [
-              "Exif metadata contains Photoshop metadata tags.",
-              "Creation date and Modification date have high time offset."
-            ]
-          },
-          extracted_text: "CANARA BANK SALARY SLIP\nEmployee: Sunita Kumar\nMonthly Net Income: INR 8,45,000\nLoan Amount Requested: INR 50,00,000"
-        });
+        console.error("FastAPI error or offline.", err);
+        setError(err.message || "Could not retrieve file analysis details.");
       } finally {
         setLoading(false);
       }
@@ -145,6 +111,17 @@ function ForensicScannerContent() {
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <div className="w-10 h-10 border-t-2 border-accent border-solid rounded-full animate-spin" />
         <p className="text-xs font-mono text-slate-500">Decrypting ELA heatmaps and metadata hashes...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-12">
+        <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h4 className="text-base font-bold text-white">Analysis Failed</h4>
+        <p className="text-sm text-slate-400 mt-2">{error}</p>
+        <Link href="/dashboard" className="text-xs text-accent hover:underline mt-4 inline-block">Return to dashboard</Link>
       </div>
     );
   }

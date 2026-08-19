@@ -52,9 +52,14 @@ def run_error_level_analysis(image_path: str, quality: int = 95, scale: int = 25
         max_diff = 0.0
         if extrema:
             if isinstance(extrema[0], tuple):
-                max_diff = float(max(ex[1] for ex in extrema))
+                valid_maxes = [float(ex[1]) for ex in extrema if isinstance(ex, tuple)]
+                if valid_maxes:
+                    max_diff = max(valid_maxes)
             else:
-                max_diff = float(extrema[1])
+                if isinstance(extrema, tuple) and len(extrema) >= 2:
+                    val = extrema[1]
+                    if not isinstance(val, tuple):
+                        max_diff = float(val)
         if max_diff == 0:
             max_diff = 1
         

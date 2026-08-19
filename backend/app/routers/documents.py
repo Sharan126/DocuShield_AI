@@ -41,6 +41,10 @@ def upload_documents(
             "file_name": upload_file.filename,
             "user": current_user.username
         }))
+        
+        print(f"filename: {upload_file.filename}")
+        print(f"mime type: {upload_file.content_type}")
+        print(f"request body: {upload_file.headers}")
 
         # 1. Read file and compute hash
         file_bytes = upload_file.file.read()
@@ -108,6 +112,9 @@ def upload_documents(
         with open(saved_path, "wb") as buffer:
             buffer.write(file_bytes)
             
+        print(f"file size: {len(file_bytes)} bytes")
+        print(f"upload location: {saved_path}")
+            
         # Generate unique document ID
         doc_uuid = str(uuid.uuid4())
             
@@ -133,6 +140,21 @@ def upload_documents(
             "metadata_status": meta_report.get("status")
         }))
         
+        print("METADATA EXTRACTION RESULT:")
+        print(f"Author: {meta_report.get('exif', {}).get('Author', '')}")
+        print(f"Creator: {meta_report.get('software', '')}")
+        print(f"Producer: {meta_report.get('exif', {}).get('Producer', '')}")
+        print(f"Creation Date: {meta_report.get('creation_timestamp', '')}")
+        print(f"Modification Date: {meta_report.get('modification_timestamp', '')}")
+        print(f"EXIF Metadata: {meta_report.get('exif', {})}")
+        print(f"Page Count: {meta_report.get('page_count', 'N/A')}")
+        print(f"Fonts: {meta_report.get('fonts', 'N/A')}")
+        print(f"Embedded Images: {meta_report.get('embedded_images', 'N/A')}")
+        print(f"XMP Metadata: {meta_report.get('xmp', 'N/A')}")
+        print(f"Object Count: {meta_report.get('object_count', 'N/A')}")
+        print(f"PDF Version: {meta_report.get('pdf_version', 'N/A')}")
+        print(f"Digital Signature: {meta_report.get('digital_signature', 'N/A')}")
+        
         # 5. Process OCR text & OCR Font/Signature Analysis
         ocr_failed = False
         ocr_report: dict[str, Any]
@@ -155,6 +177,13 @@ def upload_documents(
             "file_name": upload_file.filename,
             "ocr_failed": ocr_failed
         }))
+        
+        print("OCR RESULT")
+        print(ocr_report.get("extracted_text", ""))
+        
+        if not ocr_report.get("extracted_text", "").strip():
+            logger.error("OCR Failed: No readable text detected.")
+            raise HTTPException(status_code=400, detail="Analysis Failed: OCR Failed. No readable text detected.")
         
         # 5b. Run AI/ML Document Forgery Classification (ResNet50 / ML pipeline)
         try:

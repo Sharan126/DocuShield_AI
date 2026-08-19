@@ -615,42 +615,41 @@ def analyze_ocr_layout(file_path: str, original_filename: Optional[str] = None) 
     # Check if PDF
     if ext == ".pdf":
         try:
-            from PyPDF2 import PdfReader
+            import fitz
             import tempfile
-            from PIL import Image
-            import io
-            reader = PdfReader(file_path)
-            for idx, page in enumerate(reader.pages):
-                page_text = page.extract_text() or ""
+            
+            doc = fitz.open(file_path)
+            for page_idx in range(len(doc)):
+                page = doc[page_idx]
+                page_text = page.get_text() or ""
                 
                 # Fallback to image extraction if no text found
                 if not page_text.strip():
-                    if hasattr(page, 'images') and page.images:
-                        for image_file in page.images:
-                            try:
-                                ocr_engine = get_ocr_engine()
-                                if ocr_engine is not None:
-                                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
-                                        temp_img.write(image_file.data)
-                                        temp_img.flush()
-                                        result = ocr_engine.ocr(temp_img.name)
-                                        
-                                        if result and len(result) > 0 and result[0] is not None:
-                                            data = result[0]
-                                            # Same extraction logic for PaddleOCR data
-                                            if isinstance(data, dict):
-                                                rec_texts = data.get("rec_texts", [])
-                                                for text in rec_texts:
-                                                    page_text += text + "\n"
-                                            elif isinstance(data, list):
-                                                for line in data:
-                                                    if isinstance(line, (list, tuple)) and len(line) >= 2:
-                                                        text_info = line[1]
-                                                        if isinstance(text_info, (list, tuple)) and len(text_info) >= 2:
-                                                            page_text += text_info[0] + "\n"
-                                    os.remove(temp_img.name)
-                            except Exception as img_err:
-                                logger.error(f"[OCR Service] Embedded image OCR error: {img_err}")
+                    try:
+                        ocr_engine = get_ocr_engine()
+                        if ocr_engine is not None:
+                            pix = page.get_pixmap(dpi=150)
+                            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
+                                pix.save(temp_img.name)
+                                temp_img_name = temp_img.name
+                            
+                            result = ocr_engine.ocr(temp_img_name)
+                            
+                            if result and len(result) > 0 and result[0] is not None:
+                                data = result[0]
+                                if isinstance(data, dict):
+                                    rec_texts = data.get("rec_texts", [])
+                                    for text in rec_texts:
+                                        page_text += text + "\n"
+                                elif isinstance(data, list):
+                                    for line in data:
+                                        if isinstance(line, (list, tuple)) and len(line) >= 2:
+                                            text_info = line[1]
+                                            if isinstance(text_info, (list, tuple)) and len(text_info) >= 2:
+                                                page_text += text_info[0] + "\n"
+                            os.remove(temp_img_name)
+                    except Exception as img_err:
+                        logger.error(f"[OCR Service] Embedded image OCR error: {img_err}")
 
                 extracted_text += page_text + "\n"
 
@@ -666,7 +665,7 @@ def analyze_ocr_layout(file_path: str, original_filename: Optional[str] = None) 
                     "confidence": 99.0
                 })
         except Exception as e:
-            logger.error(f"[OCR Service] PyPDF2 extraction error: {e}")
+            logger.error(f"[OCR Service] PDF extraction error: {e}")
             ocr_status = "pdf_extraction_failed"
 
     # Otherwise treat as image (PNG, JPG, JPEG, TIFF, BMP)
