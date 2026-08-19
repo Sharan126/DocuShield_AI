@@ -49,15 +49,106 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 font-sans relative overflow-x-hidden">
       
       {/* Cyber Grid Background */}
       <div className="absolute inset-0 cyber-grid opacity-30 pointer-events-none z-0" />
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none z-0" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/10 rounded-full blur-[120px] pointer-events-none z-0" />
 
+      {/* FULLSCREEN MOBILE NAVIGATION OVERLAY */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-between p-6 md:hidden overflow-y-auto">
+          <div>
+            {/* Mobile Header Bar */}
+            <div className="flex items-center justify-between pb-5 border-b border-slate-800">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-cyan-950 border border-accent/30 rounded-lg shadow-cyber shrink-0">
+                  <ShieldAlert className="w-5 h-5 text-accent animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-lg font-bold tracking-wider font-sans text-white">
+                    DOCUSHIELD <span className="text-accent text-sm font-light">AI</span>
+                  </span>
+                  <p className="text-[8px] text-slate-400 tracking-widest uppercase">Underwriting Guard</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close navigation menu"
+                className="p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-6 h-6 text-accent" />
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="mt-8 flex flex-col space-y-2">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 pb-2 border-b border-slate-900">Platform Navigation</p>
+              <a 
+                href="#problem" 
+                onClick={() => setMenuOpen(false)} 
+                className="text-base font-bold text-slate-200 hover:text-accent py-3 transition-colors flex items-center justify-between border-b border-slate-900"
+              >
+                <span>Risk Index</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </a>
+              <a 
+                href="#features" 
+                onClick={() => setMenuOpen(false)} 
+                className="text-base font-bold text-slate-200 hover:text-accent py-3 transition-colors flex items-center justify-between border-b border-slate-900"
+              >
+                <span>Core Intelligence</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </a>
+              <a 
+                href="#workflow" 
+                onClick={() => setMenuOpen(false)} 
+                className="text-base font-bold text-slate-200 hover:text-accent py-3 transition-colors flex items-center justify-between border-b border-slate-900"
+              >
+                <span>Workflow</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </a>
+              <a 
+                href="#security" 
+                onClick={() => setMenuOpen(false)} 
+                className="text-base font-bold text-slate-200 hover:text-accent py-3 transition-colors flex items-center justify-between border-b border-slate-900"
+              >
+                <span>Compliance</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </a>
+              <a 
+                href="#faq" 
+                onClick={() => setMenuOpen(false)} 
+                className="text-base font-bold text-slate-200 hover:text-accent py-3 transition-colors flex items-center justify-between"
+              >
+                <span>Security FAQ</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </a>
+            </div>
+          </div>
+
+          {/* Action CTAs */}
+          <div className="pt-6 border-t border-slate-800/80 flex flex-col space-y-3">
+            <button 
+              onClick={() => { setMenuOpen(false); setShowDemoModal(true); }}
+              className="w-full py-3.5 rounded-xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-200 hover:bg-slate-800 text-center transition-all"
+            >
+              Request Live Demo
+            </button>
+            <Link 
+              href="/login" 
+              onClick={() => setMenuOpen(false)} 
+              className="w-full py-4 bg-accent hover:bg-cyan-400 text-center text-slate-950 font-bold rounded-xl text-sm shadow-cyber transition-all"
+            >
+              Start Analysis Session
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* HEADER / TOP NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 sm:p-2.5 bg-cyan-950 border border-accent/30 rounded-lg shadow-cyber shrink-0">
@@ -97,43 +188,13 @@ export default function LandingPage() {
 
           {/* Mobile Menu Button */}
           <button 
-            onClick={() => setMenuOpen(!menuOpen)} 
-            aria-label="Toggle Navigation Menu"
+            onClick={() => setMenuOpen(true)} 
+            aria-label="Open Navigation Menu"
             className="md:hidden p-2 rounded-lg border border-slate-800 bg-slate-900/80 text-white hover:text-accent transition-colors"
           >
-            {menuOpen ? <X className="w-6 h-6 text-accent" /> : <Menu className="w-6 h-6" />}
+            <Menu className="w-6 h-6" />
           </button>
         </div>
-
-        {/* Mobile Dropdown Menu with Full Solid Backdrop & High Z-Index */}
-        {menuOpen && (
-          <div className="fixed inset-x-0 top-20 bottom-0 bg-slate-950/98 backdrop-blur-2xl border-b border-slate-800 px-6 py-6 flex flex-col justify-between z-50 md:hidden overflow-y-auto shadow-2xl">
-            <div className="flex flex-col space-y-3">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 pb-2 border-b border-slate-800/80">Navigation Menu</span>
-              <a href="#problem" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Risk Index</a>
-              <a href="#features" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Core Intelligence</a>
-              <a href="#workflow" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Workflow</a>
-              <a href="#security" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5 border-b border-slate-900">Compliance</a>
-              <a href="#faq" onClick={() => setMenuOpen(false)} className="text-base font-semibold text-slate-200 hover:text-accent py-2.5">Security FAQ</a>
-            </div>
-            
-            <div className="flex flex-col space-y-3 pt-6 border-t border-slate-800">
-              <button 
-                onClick={() => { setMenuOpen(false); setShowDemoModal(true); }}
-                className="w-full py-3 rounded-lg border border-slate-700 text-sm font-semibold text-slate-200 hover:bg-slate-900 text-center"
-              >
-                Request Demo
-              </button>
-              <Link 
-                href="/login" 
-                onClick={() => setMenuOpen(false)} 
-                className="w-full py-3.5 bg-accent hover:bg-cyan-400 text-center text-slate-950 font-bold rounded-lg text-sm shadow-cyber"
-              >
-                Start Analysis Session
-              </Link>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* HERO SECTION */}
